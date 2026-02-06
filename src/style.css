@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  :root {
+    /* Cores do projeto */
+    --ink-black: #00020d;
+    --ink-black-2: #0d1b2a;
+    --bright-teal-blue: #0e79b2;
+    --alice-blue: #e3f2fd;
+    --bright-snow: #fafafa;
+    --sunflower-gold: #fab12f;
+    --pumpkin-spice: #fa812f;
+    --racing-red: #dd0303;
+
+    /* Variáveis shadcn/ui */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 201 85% 38%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 201 85% 38%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 231 100% 3%;
+    --foreground: 210 40% 98%;
+    --card: 211 53% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 211 53% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 201 85% 38%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 201 85% 38%;
+  }
+}
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Index page style */
+.ayni-home {
+  @apply flex flex-col;
+}
+
+/* HERO */
+.hero {
+  @apply min-h-screen flex items-center justify-center px-6 text-center;
+}
+
+.hero-content {
+  @apply max-w-4xl space-y-6;
+}
+
+.badge {
+  @apply inline-block rounded-full bg-muted px-4 py-1 text-sm;
+}
+
+.hero h1 {
+  @apply text-4xl md:text-5xl font-bold leading-tight;
+}
+
+.hero p {
+  @apply text-lg text-muted-foreground;
+}
+
+.hero-actions {
+  @apply flex gap-4 justify-center flex-wrap;
+}
+
+/* SECTIONS */
+.section {
+  @apply py-20 px-6 max-w-6xl mx-auto text-center;
+}
+
+.section.muted {
+  @apply bg-muted/40;
+}
+
+.section h2 {
+  @apply text-3xl font-semibold mb-6;
+}
+
+.section-text {
+  @apply text-muted-foreground max-w-3xl mx-auto;
+}
+
+/* FEATURES */
+.section-grid {
+  @apply gap-10;
+}
+
+.feature {
+  @apply p-6 rounded-xl border bg-background text-left space-y-3;
+}
+
+.feature svg {
+  @apply w-8 h-8 text-primary;
+}
+
+.feature h3 {
+  @apply text-lg font-semibold;
+}
+
+.feature p {
+  @apply text-sm text-muted-foreground;
+}
+
+/* IMPACT */
+.impact-list {
+  @apply space-y-3 text-left max-w-xl mx-auto;
+}
+
+/* CTA */
+.cta {
+  @apply py-24 px-6 text-center space-y-6;
+}
