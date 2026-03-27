@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,21 +7,45 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { ForgotPassword } from "./forgot-password";
+import { authService } from "@/lib/authService";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 interface SignInProps {
   onToggle: () => void;
 }
 
 export default function SignIn({ onToggle }: SignInProps) {
+  const navigate = useNavigate();
+  const { setMemberId } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login:", { email, password, rememberMe });
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const loginResponse = await authService.login({
+        personalEmail: email,
+        password,
+        rememberMe,
+      });
+      
+      // Salvar o memberId no contexto
+      setMemberId(loginResponse.member.id);
+      
+      navigate("/home");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Erro ao fazer login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,6 +59,11 @@ export default function SignIn({ onToggle }: SignInProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="text-sm text-red-500 text-center">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -43,6 +73,7 @@ export default function SignIn({ onToggle }: SignInProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -56,6 +87,7 @@ export default function SignIn({ onToggle }: SignInProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pr-10"
                   required
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -90,8 +122,8 @@ export default function SignIn({ onToggle }: SignInProps) {
                 Esqueci a senha
               </button>
             </div>
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
