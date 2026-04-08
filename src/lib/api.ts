@@ -2,7 +2,7 @@ import axios from 'axios';
 import { authService } from './authService';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3333',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -10,25 +10,25 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(
-  (config) => {
+  config => {
     const token = authService.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  error => Promise.reject(error)
 );
 
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     if (error.response?.status === 401) {
       const originalRequest = error.config;
-      
+
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-        
+
         try {
           const newToken = await authService.refreshToken();
           originalRequest.headers.Authorization = `Bearer ${newToken}`;

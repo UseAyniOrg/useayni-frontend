@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +13,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import {
   MessageSquare,
   Users,
@@ -23,34 +23,24 @@ import {
   CheckSquare,
   Settings,
   ChevronRight,
-} from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { AccountSwitcher } from "./AccountSwitcher";
-import { NavUser } from "./NavUser";
-import { useCurrentMember } from "@/hooks/useCurrentMember";
-import { useNavigate } from "react-router-dom";
+} from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AccountSwitcher } from './AccountSwitcher';
+import { NavUser } from './NavUser';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
+import { useNavigate } from 'react-router-dom';
 
-interface Permission {
+interface MemberPosition {
+  type: 'REPRESENTANTE' | 'DIRIGENTE' | 'CAR' | 'CAE';
   id: string;
   name: string;
-  description: string;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: Permission[];
 }
 
 interface RolesAndPermissionsData {
   memberId: string;
   memberName: string;
-  roles: Role[];
+  roles: string[];
+  positions: MemberPosition[];
 }
 
 interface AppSidebarProps {
@@ -58,29 +48,34 @@ interface AppSidebarProps {
   isLoading: boolean;
 }
 
-const mockComunidades = ["Comunidade A", "Comunidade B", "Comunidade C"];
+const mockComunidades = ['Comunidade A', 'Comunidade B', 'Comunidade C'];
 
 export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) {
   const [comunidadesOpen, setComunidadesOpen] = useState(false);
   const [tarefasOpen, setTarefasOpen] = useState(false);
 
   const navigate = useNavigate();
-  
+
   // Fetch current member data
   const { member } = useCurrentMember();
 
   const user = {
-    name: member?.name || "Usuário",
-    email: member?.email_personal || member?.email_university || "email@example.com",
-    avatar: member?.profile_picture_url || "",
-    slug: member?.slug || "",
+    name: member?.name || 'Usuário',
+    email: member?.email_personal || member?.email_university || 'email@example.com',
+    avatar: member?.profile_picture_url || '',
+    slug: member?.slug || '',
   };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center justify-center p-2 group-data-[collapsible=icon]:hidden" >
-          <img src="/Ayni.svg" alt="Ayni" className="h-8 w-auto cursor-pointer" onClick={() => navigate("/home")}/>
+        <div className="flex items-center justify-center p-2 group-data-[collapsible=icon]:hidden">
+          <img
+            src="/Ayni.svg"
+            alt="Ayni"
+            className="h-8 w-auto cursor-pointer"
+            onClick={() => navigate('/home')}
+          />
         </div>
         <AccountSwitcher rolesAndPermissions={rolesAndPermissions} isLoading={isLoading} />
       </SidebarHeader>
@@ -112,7 +107,7 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
                   </SidebarMenuButton>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {mockComunidades.map((comunidade) => (
+                      {mockComunidades.map(comunidade => (
                         <SidebarMenuSubItem key={comunidade}>
                           <SidebarMenuSubButton>
                             <span>{comunidade}</span>

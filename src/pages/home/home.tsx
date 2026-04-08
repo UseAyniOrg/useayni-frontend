@@ -1,7 +1,7 @@
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { AppHeader } from "@/components/layout/AppHeader";
-import { useRolesAndPermissions } from "@/hooks/useRolesAndPermissions";
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/layout/AppSidebar';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 
 export default function Home() {
   const { data: rolesAndPermissions, isLoading } = useRolesAndPermissions();

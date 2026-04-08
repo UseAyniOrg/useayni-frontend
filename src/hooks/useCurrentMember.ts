@@ -11,7 +11,6 @@ interface CurrentMemberData {
   ra?: string;
   profile_picture_url?: string;
   birth_date?: string;
-  course_id?: string;
   city_id?: string;
   admission_date?: string;
   sponsor?: string;
@@ -26,51 +25,31 @@ interface CurrentMemberData {
   slug?: string;
 }
 
-interface UseCurrentMemberReturn {
-  member: CurrentMemberData | null;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => Promise<void>;
-}
-
-export function useCurrentMember(): UseCurrentMemberReturn {
+export function useCurrentMember() {
   const [member, setMember] = useState<CurrentMemberData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { memberId } = useAuthContext();
+  const { user } = useAuthContext();
 
   const fetchCurrentMember = async () => {
-    if (!memberId) {
-      setError(new Error('Member ID is not provided'));
-      return;
-    }
+    if (!user?.id) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await api.get<CurrentMemberData>(
-        `/members/${memberId}`
-      );
+      const response = await api.get<CurrentMemberData>(`/members/${user.id}`);
       setMember(response.data);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to fetch current member');
-      setError(error);
+      setError(err instanceof Error ? err : new Error('Failed to fetch current member'));
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (memberId) {
-      fetchCurrentMember();
-    }
-  }, [memberId]);
+    if (user?.id) fetchCurrentMember();
+  }, [user?.id]);
 
-  return {
-    member,
-    isLoading,
-    error,
-    refetch: fetchCurrentMember,
-  };
+  return { member, isLoading, error, refetch: fetchCurrentMember };
 }

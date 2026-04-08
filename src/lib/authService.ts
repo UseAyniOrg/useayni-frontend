@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { useCookies } from 'react-cookie';
+import type { AuthUser } from '@/contexts/AuthContext';
 
 interface LoginCredentials {
   personalEmail: string;
@@ -11,76 +11,134 @@ interface LoginResponse {
   member: {
     id: string;
     email_personal: string;
-    position: string;
+    name: string;
+    roles: string[];
   };
   accessToken: string;
   refreshToken?: string;
 }
 
+interface SignUpData {
+  name: string;
+  cpf: string;
+  phone: string;
+  email_personal: string;
+  email_university: string;
+  birth_date: string;
+  admission_date: string;
+  ra: string;
+  password: string;
+  city_id?: string;
+  course_university_id?: string;
+  sponsor?: string;
+}
+
+interface SignUpResponse {
+  message: string;
+  data: Record<string, unknown>;
+  accessToken: string;
+}
+
 export const authService = {
-  async login(credentials: LoginCredentials): Promise<LoginResponse> {
+  async login(
+    credentials: LoginCredentials
+  ): Promise<{ user: AuthUser; accessToken: string; refreshToken?: string }> {
     const response = await api.post<LoginResponse>('/auth/login', credentials);
-    
     const { accessToken, refreshToken } = response.data;
-    
-    // Armazenar tokens em cookies HTTP Only Secure
-    document.cookie = `accessToken=${accessToken}; path=/; secure; samesite=strict`;
-    
-    if (refreshToken) {
-      document.cookie = `refreshToken=${refreshToken}; path=/; secure; samesite=strict`;
-    }
-    
-    return response.data;
+
+    setCookie('accessToken', accessToken);
+    if (refreshToken) setCookie('refreshToken', refreshToken);
+
+    const user = parseJwt(accessToken);
+    if (!user) throw new Error('Token inválido recebido do servidor');
+
+    return { user, accessToken, refreshToken };
+  },
+
+  async signUp(data: SignUpData): Promise<{ user: AuthUser; accessToken: string }> {
+    const response = await api.post<SignUpResponse>('/members', data);
+    const { accessToken } = response.data;
+
+    setCookie('accessToken', accessToken);
+
+    const user = parseJwt(accessToken);
+    if (!user) throw new Error('Token inválido recebido do servidor');
+
+    return { user, accessToken };
   },
 
   async logout(): Promise<void> {
     const accessToken = getCookie('accessToken');
-    
     if (accessToken) {
-      await api.post('/auth/logout', {}, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      try {
+        await api.post(
+          '/auth/logout',
+          {},
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+      } catch {
+        // Ignorar erro no logout
+      }
     }
-    
-    // Remover cookies
-    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    
-    // Remover memberId do localStorage
-    try {
-      localStorage.removeItem('memberId');
-    } catch {
-      console.error('Failed to remove memberId from localStorage');
-    }
+    removeCookie('accessToken');
+    removeCookie('refreshToken');
   },
 
   async refreshToken(): Promise<string> {
     const refreshToken = getCookie('refreshToken');
-    
-    if (!refreshToken) {
-      throw new Error('Refresh token não encontrado');
-    }
-    
-    const response = await api.post<{ accessToken: string; refreshToken: string }>('/auth/refresh-token', {
-      refreshToken
-    });
-    
+    if (!refreshToken) throw new Error('Refresh token não encontrado');
+
+    const response = await api.post<{ accessToken: string; refreshToken: string }>(
+      '/auth/refresh-token',
+      { refreshToken }
+    );
+
     const { accessToken, refreshToken: newRefreshToken } = response.data;
-    
-    document.cookie = `accessToken=${accessToken}; path=/; secure; samesite=strict`;
-    document.cookie = `refreshToken=${newRefreshToken}; path=/; secure; samesite=strict`;
-    
+    setCookie('accessToken', accessToken);
+    setCookie('refreshToken', newRefreshToken);
+
     return accessToken;
   },
 
   getAccessToken(): string | null {
     return getCookie('accessToken');
   },
+
+  parseUserFromToken(): AuthUser | null {
+    const token = getCookie('accessToken');
+    return token ? parseJwt(token) : null;
+  },
 };
+
+function parseJwt(token: string): AuthUser | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return {
+      id: payload.memberId || payload.id || '',
+      email: payload.email || '',
+      name: payload.name || '',
+      isActive: payload.isActive ?? false,
+      roles: payload.roles || [],
+      positions: payload.positions || [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 function getCookie(name: string): string | null {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
   return null;
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${value}; path=/; samesite=strict`;
+}
+
+function removeCookie(name: string) {
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
