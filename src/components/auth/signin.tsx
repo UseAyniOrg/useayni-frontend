@@ -56,11 +56,11 @@ export default function SignIn({ onToggle }: SignInProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="text-sm text-red-500 text-center">{error}</div>}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email pessoal</Label>
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder="email pessoal cadastrado"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required

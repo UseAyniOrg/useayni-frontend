@@ -2,7 +2,7 @@ import axios from 'axios';
 import { authService } from './authService';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3333',
+  baseURL: import.meta.env.BACKEND_URL || 'http://localhost:3333',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
