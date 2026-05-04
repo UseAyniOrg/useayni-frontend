@@ -10,29 +10,53 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+
+
 export default function Main() {
   const navigate = useNavigate();
   return (
-    <main className="ayni-home">
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-content">
-          <span className="badge">Plataforma do creaJR</span>
-          <h1>
-            Ayni — tecnologia para integrar, colaborar e evoluir
-            <br />a engenharia universitária do Paraná
+    <main className="ayni-home absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%) ">
+      <section className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white overflow-hidden">
+
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
+
+
+        <div className="relative z-10 max-w-4xl px-6 text-center flex flex-col items-center">
+          <div className="w-44 mb-6">
+            <img src="/AyniLogoHero.png" alt="Ayni Hero" draggable={false} />
+          </div>
+
+          <span className="mb-4 text-xs tracking-widest uppercase text-gray-400 border border-gray-700 px-3 py-1 rounded-full">
+            Plataforma do CREA JR
+          </span>
+
+          <h1 className="text-4xl md:text-5xl font-semibold leading-tight mb-6">
+            Tecnologia para integrar,
+            <br />
+            colaborar e evoluir a
+            <br />
+            engenharia universitária
           </h1>
-          <p>
-            Uma plataforma unificada para gestão de projetos, equipes e
-            aprendizado prático, conectando alunos, coordenações e o futuro
-            profissional.
+
+          <p className="text-gray-400 max-w-2xl text-lg mb-10 leading-relaxed">
+            Uma plataforma unificada para gestão de projetos, equipes e aprendizado prático,
+            conectando alunos, coordenações e o futuro profissional da engenharia.
           </p>
 
-          <div className="hero-actions">
-            <Button size="lg" onClick={() => navigate("/credenciais")}>
+          <div className="flex gap-4 flex-wrap justify-center">
+            <Button
+              size="lg"
+              onClick={() => navigate("/credenciais")}
+              className="bg-gradient-to-r from-slate-200 to-white text-black font-medium px-8 py-6 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
+            >
               Entrar na plataforma
             </Button>
-            <Button size="lg" variant="outline">
+
+            <Button
+              size="lg"
+              variant="outline"
+              className="px-8 py-6 rounded-xl border border-gray-700 text-gray-300 backdrop-blur-md bg-white/5 hover:bg-white/10 hover:border-gray-500 hover:text-white transition-all duration-300"
+            >
               Conhecer o projeto
             </Button>
           </div>
@@ -40,104 +64,238 @@ export default function Main() {
       </section>
 
       {/* PROBLEMA */}
-      <section className="section muted">
-        <h2>O problema que enfrentamos hoje</h2>
-        <p className="section-text">
-          Projetos descentralizados, informações espalhadas, retrabalho
-          administrativo e pouca visibilidade real do desenvolvimento dos
-          alunos. A gestão acadêmica sofre, e o potencial dos estudantes se
-          perde no caminho.
-        </p>
-      </section>
 
-      {/* O QUE É O AYNI */}
-      <section className="section">
-        <h2>O que é o Ayni?</h2>
-        <p className="section-text">
-          O Ayni é uma plataforma integrada de gestão e colaboração voltada para
-          alunos de engenharia. Ele centraliza projetos, equipes, documentação,
-          métricas e aprendizado prático em um único ambiente acessível,
-          transparente e orientado a dados.
-        </p>
+      <section className="relative py-20 px-6 bg-[#00030a] flex flex-row justify-center border-t border-gray-800 overflow-hidden">
+        <div className="relative py-24 px-6 w-[40%]">
+          <div className="max-w-4xl mx-auto text-center">
+
+            <span className="text-xs tracking-widest uppercase text-white">
+              Contexto
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-semibold mt-4 mb-6 text-white">
+              O problema que enfrentamos hoje
+            </h2>
+
+            <p className="text-gray-400 text-lg leading-relaxed">
+              Projetos descentralizados, informações espalhadas e retrabalho administrativo
+              comprometem a eficiência. A gestão acadêmica perde visibilidade e o potencial
+              dos alunos acaba sendo subutilizado ao longo do processo.
+            </p>
+          </div>
+        </div>
+
+        {/* O QUE É */}
+        <div className="relative py-24 px-6 w-[40%]">
+          <div className="max-w-4xl mx-auto text-center">
+            <span className="text-xs tracking-widest uppercase text-white">
+              Solução
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-semibold mt-4 mb-6 text-white">
+              O que é o Ayni?
+            </h2>
+
+            <p className="text-gray-400 text-lg leading-relaxed">
+              O Ayni é uma plataforma integrada de gestão e colaboração para engenharia,
+              centralizando projetos, equipes, documentação e métricas em um único ambiente.
+              Um ecossistema acessível, transparente e orientado a dados.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* FUNCIONALIDADES */}
-      <section className="section section grid grid-cols-1 md:grid-cols-3 gap-10">
-        <div className="feature">
-          <Users />
-          <h3>Gestão de equipes</h3>
-          <p>
-            Times, permissões, perfis e planos organizados para refletir a
-            realidade acadêmica e profissional.
-          </p>
+      <section className="relative py-10 px-6 bg-[#00030a] flex flex-col items-center">
+
+        <div className="max-w-6xl mx-auto text-center mb-16">
+          <span className="text-xs tracking-widest uppercase text-white">
+            Plataforma
+          </span>
+
+          <h2 className="text-3xl md:text-4xl font-semibold mt-4 text-white">
+            Funcionalidades principais
+          </h2>
         </div>
 
-        <div className="feature">
-          <LayoutDashboard />
-          <h3>Projetos e boards</h3>
-          <p>
-            Espaços de projeto com templates, artefatos, entregas e histórico
-            completo de evolução.
-          </p>
-        </div>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <div className="feature">
-          <Layers />
-          <h3>Playground colaborativo</h3>
-          <p>
-            Ambiente para experimentação, iteração e aprendizado prático com
-            rastreabilidade.
-          </p>
-        </div>
+          {/* CARD */}
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <Users className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white">Gestão de equipes</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Times, permissões e perfis organizados para refletir a realidade acadêmica e profissional.
+            </p>
+          </div>
 
-        <div className="feature">
-          <FileText />
-          <h3>Documentação central</h3>
-          <p>
-            Tutoriais, guias, changelog e documentação viva integrada ao fluxo
-            do projeto.
-          </p>
-        </div>
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <LayoutDashboard className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white">Projetos e boards</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Espaços com templates, entregas e histórico completo de evolução.
+            </p>
+          </div>
 
-        <div className="feature">
-          <BarChart3 />
-          <h3>Métricas e painéis</h3>
-          <p>
-            Dados reais de progresso, uso de recursos e desempenho para tomada
-            de decisão.
-          </p>
-        </div>
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <Layers className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white  ">Playground colaborativo</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Ambiente para experimentação e aprendizado prático com rastreabilidade.
+            </p>
+          </div>
 
-        <div className="feature">
-          <Rocket />
-          <h3>Preparação profissional</h3>
-          <p>
-            Portfólios, histórico de projetos e evidências reais de competência
-            para o mercado.
-          </p>
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <FileText className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white">Documentação central</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Guias, tutoriais e documentação viva integrada ao fluxo do projeto.
+            </p>
+          </div>
+
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <BarChart3 className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white  ">Métricas e painéis</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Dados reais de progresso e desempenho para tomada de decisão.
+            </p>
+          </div>
+
+          <div className="group p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300">
+            <Rocket className="mb-4 text-gray-300 group-hover:text-white transition" />
+            <h3 className="text-lg font-medium mb-2 text-white">Preparação profissional</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Portfólios e histórico de projetos com evidências reais para o mercado.
+            </p>
+          </div>
+
         </div>
       </section>
 
-      {/* IMPACTO */}
-      <section className="section muted">
-        <h2>Impacto esperado</h2>
-        <ul className="impact-list">
-          <li>✔ Mais eficiência na gestão acadêmica</li>
-          <li>✔ Maior engajamento e qualidade nas entregas</li>
-          <li>✔ Alunos preparados para ambientes profissionais reais</li>
-          <li>✔ Decisões orientadas por dados</li>
-        </ul>
-      </section>
+      <div className="bg-black text-white">
 
-      {/* CTA */}
-      <section className="cta">
-        <h2>Construído para o presente. Pensado para o futuro.</h2>
-        <p>
-          O Ayni nasce dentro do creaJR para se tornar o ecossistema digital da
-          engenharia universitária.
-        </p>
-        <Button size="lg">Participar do piloto</Button>
-      </section>
+        {/* IMPACTO */}
+        <section className="relative py-24 px-6 bg-[#00030a]">
+
+          <div className="max-w-5xl mx-auto text-center mb-16">
+            <span className="text-xs tracking-widest uppercase text-gray-500">
+              Resultado
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-semibold mt-4">
+              Impacto esperado
+            </h2>
+          </div>
+
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {[
+              "Mais eficiência na gestão acadêmica",
+              "Maior engajamento e qualidade nas entregas",
+              "Alunos preparados para ambientes profissionais reais",
+              "Decisões orientadas por dados",
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-4 p-6 rounded-2xl border border-gray-800 bg-white/5 backdrop-blur-md hover:border-gray-600 transition-all duration-300"
+              >
+                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-sm">
+                  ✓
+                </div>
+
+                <p className="text-gray-300 leading-relaxed">{item}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="relative py-28 px-6 overflow-hidden bg-[#00030a]">
+
+          {/* glow sutil de fundo */}
+
+          <div className="relative z-10 max-w-4xl mx-auto text-center">
+
+            <h2 className="text-3xl md:text-5xl font-semibold leading-tight mb-6">
+              Construído para o presente.
+              <br />
+              Pensado para o futuro.
+            </h2>
+
+            <p className="text-gray-400 text-lg mb-10 leading-relaxed">
+              O Ayni nasce dentro do CREA JR para se tornar o ecossistema digital da
+              engenharia universitária.
+            </p>
+
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-slate-200 to-white text-black font-medium px-10 py-6 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300"
+            >
+              Participar do piloto
+            </Button>
+
+            {/* detalhe visual inferior */}
+            <div className="mt-12 text-xs text-gray-500 tracking-wide">
+              Vagas limitadas para instituições parceiras
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <footer className="relative border-t border-gray-900 bg-[#00030a] text-gray-300 py-12">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="flex items-center gap-4">
+              <img src="/AyniLogoHero.png" alt="Ayni" className="w-28" />
+              <div>
+                <p className="text-white font-semibold">Ayni</p>
+                <p className="text-sm text-gray-400">Plataforma do CREA JR</p>
+              </div>
+            </div>
+
+            <div className="flex gap-8">
+              <div>
+                <h4 className="text-sm text-gray-400 mb-2">Navegação</h4>
+                <ul className="text-sm space-y-2">
+                  <li>
+                    <a href="/credenciais" className="hover:text-white">
+                      Entrar
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#funcionalidades" className="hover:text-white">
+                      Funcionalidades
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#impacto" className="hover:text-white">
+                      Impacto
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-sm text-gray-400 mb-2">Contato</h4>
+                <p className="text-sm">contato@creajr.edu.br</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-gray-800 pt-6 text-sm text-gray-500 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>© {new Date().getFullYear()} Ayni — Todos os direitos reservados</div>
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-white">
+                Política de Privacidade
+              </a>
+              <a href="#" className="hover:text-white">
+                Termos
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
