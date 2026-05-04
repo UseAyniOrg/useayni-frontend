@@ -30,12 +30,12 @@ export default function Main() {
             Plataforma do CREA JR
           </span>
 
-          <h1 className="text-4xl md:text-5xl font-semibold leading-tight mb-6">
-            Tecnologia para integrar,
+          <h1 className="text-4xl md:text-5xl font-semibold leading-tight mb-6 zilap-futuria">
+            Tecnologia para integrar
             <br />
             colaborar e evoluir a
             <br />
-            engenharia universitária
+            engenharia universitaria
           </h1>
 
           <p className="text-gray-400 max-w-2xl text-lg mb-10 leading-relaxed">
@@ -283,7 +283,7 @@ export default function Main() {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-gray-800 pt-6 text-sm text-gray-500 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <div className="mt-8 pt-12 text-sm text-gray-500 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>© {new Date().getFullYear()} Ayni — Todos os direitos reservados</div>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white">
