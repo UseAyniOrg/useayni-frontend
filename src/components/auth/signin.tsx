@@ -33,13 +33,15 @@ export default function SignIn({ onToggle }: SignInProps) {
       setUser(user);
       navigate('/home');
     } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as any).response?.data?.message === 'string'
-          ? (error as any).response.data.message
-          : 'Credenciais inválidas';
+      const responseMessage =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as any).response?.data?.message
+          : undefined;
+      const message = Array.isArray(responseMessage)
+        ? responseMessage.join(', ')
+        : typeof responseMessage === 'string'
+          ? responseMessage
+          : 'Credenciais invalidas';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -108,7 +110,7 @@ export default function SignIn({ onToggle }: SignInProps) {
           </Button>
         </form>
         <div className="mt-4 text-center text-sm">
-          Não tem uma conta?{' '}
+          Nao tem uma conta?{' '}
           <button onClick={onToggle} className="text-primary hover:underline font-medium">
             Cadastre-se
           </button>

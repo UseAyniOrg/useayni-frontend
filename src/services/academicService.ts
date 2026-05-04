@@ -16,6 +16,7 @@ export interface UniversityOption {
   id: string;
   name: string;
   acronym?: string | null;
+  city_id?: string | null;
 }
 
 export interface CourseUniversityOption {
@@ -44,14 +45,21 @@ export const academicService = {
     return response.data;
   },
 
-  async getUniversities() {
-    const response = await api.get<UniversityOption[]>('/universities');
+  async getUniversities(params?: {
+    q?: string;
+    stateId?: string;
+    stateUf?: string;
+    cityId?: string;
+  }) {
+    const response = await api.get<UniversityOption[]>('/universities', {
+      params,
+    });
     return response.data;
   },
 
-  async getCoursesByUniversity(universityId: string) {
+  async getCoursesByUniversity(universityId: string, cityId?: string) {
     const response = await api.get<CourseOption[]>('/courses', {
-      params: { universityId },
+      params: { universityId, cityId },
     });
     return response.data;
   },
