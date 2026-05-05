@@ -105,6 +105,78 @@ export default function Main() {
         </div>
       </section>
 
+      {/* MISSÃO */}
+      <section className="relative py-28 px-6 bg-[#00030a] flex flex-row justify-center overflow-hidden">
+
+        {/* fundo decorativo */}
+       <div className="absolute left-[-400px] top-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full overflow-hidden border border-blue-500/20 shadow-2xl">
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.7),rgba(255,255,255,0.2)_40%,transparent_75%)] blur-2xl opacity-80" />
+          <img
+            src="/images/creajr.png"
+            alt="Comunidade CREA Jr"
+            className="relative z-10 w-full h-full object-cover"
+          />
+
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          {/* LEFT - CARDS */}
+          <div className="relative flex flex-col items-center gap-6">
+
+            {/* MISSÃO */}
+            <div className="w-64 p-6 ">
+              <h3 className="text-blue-400 text-sm tracking-widest mb-2">MISSÃO</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Conectar acadêmicos de engenharia do Paraná em uma rede colaborativa,
+                fortalecendo comunidades e ampliando oportunidades.
+              </p>
+            </div>
+
+            {/* VISÃO */}
+            <div className="w-64 p-6  translate-x-10">
+              <h3 className="text-blue-400 text-sm tracking-widest mb-2">VISÃO</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Ser a principal rede de integração da engenharia universitária no Paraná,
+                conectando pessoas, ideias e iniciativas.
+              </p>
+            </div>
+
+            {/* VALORES */}
+            <div className="w-64 p-6 -translate-x-10">
+              <h3 className="text-blue-400 text-sm tracking-widest mb-2">VALORES</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Colaboração, protagonismo, transparência e crescimento coletivo como base
+                da construção da rede.
+              </p>
+            </div>
+
+          </div>
+
+          {/* RIGHT - TEXTO PRINCIPAL */}
+          <div className="text-center md:text-left">
+
+            <span className="text-xs tracking-widest uppercase text-gray-500">
+              Institucional
+            </span>
+
+            <h2 className="text-4xl md:text-5xl font-semibold mt-4 mb-6 text-white leading-tight">
+              A base que sustenta
+              <br />
+              o UseAyni
+            </h2>
+
+            <p className="text-gray-400 text-lg leading-relaxed max-w-xl">
+              O UseAyni nasce com o propósito de integrar o ecossistema do CREA Jr,
+              transformando comunidades isoladas em uma rede conectada, organizada e
+              ativa. Mais do que uma plataforma, é uma estrutura para fortalecer a
+              engenharia universitária e ampliar seu impacto em todo o Paraná.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
       {/* FUNCIONALIDADES */}
       <section className="relative py-10 px-6 bg-[#00030a] flex flex-col items-center">
 
