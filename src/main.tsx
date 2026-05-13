@@ -9,14 +9,49 @@ import {
   Layers,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 
 
 
 export default function Main() {
   const navigate = useNavigate();
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const heroSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (heroSectionRef.current) {
+        const rect = heroSectionRef.current.getBoundingClientRect();
+        setMousePosition({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+      }
+    };
+
+    const heroSection = heroSectionRef.current;
+    if (heroSection) {
+      heroSection.addEventListener("mousemove", handleMouseMove);
+      return () => heroSection.removeEventListener("mousemove", handleMouseMove);
+    }
+  }, []);
+
   return (
     <main className="ayni-home absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%) ">
-      <section className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white overflow-hidden">
+      <section 
+        ref={heroSectionRef}
+        className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white overflow-hidden"
+      >
+        {/* Mouse Follow Glow */}
+        <div
+          className="absolute pointer-events-none w-96 h-96 rounded-full blur-3xl opacity-30 transition-opacity duration-300"
+          style={{
+            background: "radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 70%)",
+            left: `${mousePosition.x}px`,
+            top: `${mousePosition.y}px`,
+            transform: "translate(-50%, -50%)",
+          }}
+        />
 
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
@@ -46,7 +81,7 @@ export default function Main() {
           <div className="flex gap-4 flex-wrap justify-center">
             <Button
               size="lg"
-              onClick={() => navigate("/credenciais")}
+              onClick={() => navigate("/login")}
               className="bg-gradient-to-r from-slate-200 to-white text-black font-medium px-8 py-6 rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
             >
               Entrar na plataforma
@@ -114,7 +149,7 @@ export default function Main() {
           <img
             src="/images/creajr.png"
             alt="Comunidade CREA Jr"
-            className="relative z-10 w-full h-full object-cover"
+            className="relative z-10 w-full h-full object-cover " draggable={false}
           />
 
         </div>
@@ -331,7 +366,7 @@ export default function Main() {
                 <h4 className="text-sm text-gray-400 mb-2">Navegação</h4>
                 <ul className="text-sm space-y-2">
                   <li>
-                    <a href="/credenciais" className="hover:text-white">
+                    <a href="/login" className="hover:text-white">
                       Entrar
                     </a>
                   </li>
