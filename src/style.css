@@ -94,3 +94,44 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+
+@font-face {
+  font-family: 'NovaSolid';
+  src: url('/fonts/NovaSolidSolid-1Xq0.ttf') format('truetype'),
+       url('/fonts/NovaSolidSolid-mJzm.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Classe utilitária para aplicar a fonte NovaSolid */
+.font-nova {
+  font-family: 'NovaSolid', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@font-face {
+  font-family: 'Zilap Futuria';
+  src: url('/fonts/ZilapFuturiaDemo-gwoaE.ttf') format('truetype'),
+       url('/fonts/ZilapFuturiaDemoBold-XG8DG.ttf') format('truetype'),
+       url('/fonts/ZilapFuturiaDemoBold-PVD27.ttf') format('truetype'),
+       url('/fonts/ZilapFuturiaDemoLight-e9Xyp.ttf') format('truetype'),
+       url('/fonts/ZilapFuturiaLightDemoItalic-aYmDE.ttf') format('truetype'),
+       url('/fonts/ZilapFuturiaDemoItalic-0vpxd.ttf') format('truetype');
+  font-weight: 400 800;
+  font-style: normal;
+}
+
+/* Classe utilitária para aplicar a fonte Zilap Futuria */
+.zilap-futuria {
+  font-family: 'Zilap Futuria', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@font-face {
+  font-family: 'Rewon';
+  src: url('/fonts/RewonSlanted-5ydzj.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.rewon {
+  font-family: 'Rewon', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}

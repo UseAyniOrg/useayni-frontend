@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import SignIn from "@/components/auth/signin";
 import SignUp from "@/components/auth/signup";
 
@@ -13,12 +13,13 @@ export default function Credentials() {
     const mode = searchParams.get("mode");
     const padrinho = searchParams.get("padrinho");
     const isSignupRoute = location.pathname === "/cadastro";
+
     setIsSignUp(mode === "signup" || isSignupRoute);
     setPadrinhoSlug(padrinho);
-  }, [searchParams, location]);
+  }, [searchParams, location.pathname]);
 
   const toggleMode = () => {
-    setIsSignUp(!isSignUp);
+    setIsSignUp(current => !current);
   };
 
   return (
