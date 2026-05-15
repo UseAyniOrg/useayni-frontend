@@ -40,7 +40,6 @@ interface SignUpData {
 interface SignUpResponse {
   message: string;
   data: Record<string, unknown>;
-  accessToken?: string;
 }
 
 export const authService = {
