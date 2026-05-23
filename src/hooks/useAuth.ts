@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { authService } from '@/lib/authService';
+import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 export function useAuth() {

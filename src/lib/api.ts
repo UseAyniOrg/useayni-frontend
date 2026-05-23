@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { authService } from './authService';
+import { authService } from './auth/authService';
 
 export const api = axios.create({
   baseURL: import.meta.env.BACKEND_URL || 'http://localhost:3333',
