@@ -14,8 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PadrinhoSelector, findMemberBySlug, type Member } from './padrinho-selector';
-import { validatePassword } from '@/lib/password-validation';
-import { authService } from '@/lib/authService';
+import { validatePassword } from '@/utils/password';
+import { authService } from '@/lib/auth/authService';
 import {
   academicService,
   type CityOption,
@@ -23,51 +23,18 @@ import {
   type StateOption,
   type UniversityOption,
 } from '@/services/academicService';
+import { validateCPF } from '@/utils/cpf';
+import { formatCPF } from '@/utils/cpf';
+import { formatPhone } from '@/utils/phone';
+import { validateEmail } from '@/utils/email';
 
 interface SignUpProps {
-  onToggle: () => void;
   padrinhoSlug?: string | null;
 }
 
-const formatCPF = (value: string) =>
-  value
-    .replace(/\D/g, '')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-    .replace(/(-\d{2})\d+?$/, '$1');
-
-const formatPhone = (value: string) =>
-  value
-    .replace(/\D/g, '')
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{4,5})(\d{4})/, '$1-$2')
-    .replace(/(-\d{4})\d+?$/, '$1');
-
-const isValidCPF = (value: string) => {
-  const cpf = value.replace(/\D/g, '');
-
-  if (cpf.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
-
-  const calculateDigit = (base: string, factor: number) => {
-    const total = base
-      .split('')
-      .reduce((sum, digit) => sum + Number(digit) * factor--, 0);
-    const remainder = (total * 10) % 11;
-
-    return remainder === 10 ? 0 : remainder;
-  };
-
-  const firstDigit = calculateDigit(cpf.slice(0, 9), 10);
-  const secondDigit = calculateDigit(cpf.slice(0, 10), 11);
-
-  return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
-};
-
 const NOT_APPLICABLE = 'not_applicable';
 
-export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
+export default function SignUp({ padrinhoSlug }: SignUpProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -150,10 +117,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
       return;
     }
 
-    setFieldValidation(
-      fieldName,
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? undefined : 'Email inválido'
-    );
+    setFieldValidation(fieldName, validateEmail(value) ? undefined : 'Email inválido');
   };
 
   const validateCourseSelection = (nextCourseId = courseId, nextCityId = cityId) => {
@@ -171,8 +135,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
       .find(course => course.id === nextCourseId)
       ?.courseUniversities?.find(
         courseUniversity =>
-          courseUniversity.university_id === universityId &&
-          courseUniversity.city_id === nextCityId
+          courseUniversity.university_id === universityId && courseUniversity.city_id === nextCityId
       )?.id;
 
     setFieldValidation(
@@ -250,9 +213,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
 
     if (!query) return cities.slice(0, 50);
 
-    return cities
-      .filter(city => city.name.toLowerCase().includes(query))
-      .slice(0, 50);
+    return cities.filter(city => city.name.toLowerCase().includes(query)).slice(0, 50);
   }, [cities, citySearch]);
 
   const filteredCourses = useMemo(() => {
@@ -260,8 +221,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
 
     if (!query) return courses;
 
-    return courses
-      .filter(course => course.name.toLowerCase().includes(query));
+    return courses.filter(course => course.name.toLowerCase().includes(query));
   }, [courses, courseSearch]);
 
   useEffect(() => {
@@ -386,14 +346,18 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
       if (!ra) newErrors.ra = 'RA é obrigatório';
       if (!admissionDate) newErrors.admissionDate = 'Data de ingresso é obrigatória';
       if (!emailUniversity) newErrors.emailUniversity = 'Email acadêmico é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailUniversity))
-        newErrors.emailUniversity = 'Email inválido';
+      else if (!validateEmail(emailUniversity)) newErrors.emailUniversity = 'Email inválido';
       if (!stateId) newErrors.stateId = 'Estado é obrigatório';
       if (!cityId) newErrors.cityId = 'Cidade é obrigatória';
       if (!universityId) newErrors.universityId = 'Universidade é obrigatória';
       if (!courseId) newErrors.courseId = 'Curso é obrigatório';
       if (!currentSemester) newErrors.currentSemester = 'Semestre atual é obrigatório';
-      if (false && universityId !== NOT_APPLICABLE && courseId !== NOT_APPLICABLE && !selectedCourseUniversityId)
+      if (
+        false &&
+        universityId !== NOT_APPLICABLE &&
+        courseId !== NOT_APPLICABLE &&
+        !selectedCourseUniversityId
+      )
         newErrors.courseId = 'Curso não disponível para a cidade selecionada';
     }
 
@@ -402,12 +366,11 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
       if (!sobrenome) newErrors.sobrenome = 'Sobrenome é obrigatório';
       if (!dataNascimento) newErrors.dataNascimento = 'Data de nascimento é obrigatória';
       if (!cpf) newErrors.cpf = 'CPF é obrigatório';
-      else if (!isValidCPF(cpf)) newErrors.cpf = 'CPF inválido';
+      else if (!validateCPF(cpf)) newErrors.cpf = 'CPF inválido';
       if (!telefone) newErrors.telefone = 'Telefone é obrigatório';
       else if (telefone.replace(/\D/g, '').length < 10) newErrors.telefone = 'Telefone inválido';
       if (!emailPessoal) newErrors.emailPessoal = 'Email pessoal é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPessoal))
-        newErrors.emailPessoal = 'Email inválido';
+      else if (!validateEmail(emailPessoal)) newErrors.emailPessoal = 'Email inválido';
     }
 
     if (step === 2) {
@@ -479,8 +442,8 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(', ')
         : typeof responseMessage === 'string'
-          ? responseMessage
-          : 'Erro ao criar conta. Tente novamente.';
+        ? responseMessage
+        : 'Erro ao criar conta. Tente novamente.';
       setApiError(message);
     } finally {
       setIsLoading(false);
@@ -654,31 +617,33 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                   )}
                 </div>
                 <div className="hidden">
-                <Select
-                  value={cityId}
-                  onValueChange={value => {
-                    setCityId(value);
-                    setUniversityId('');
-                    setUniversitySearch('');
-                    setUniversities([]);
-                    setCourseId('');
-                    setCourses([]);
-                    setFieldValidation('cityId', value ? undefined : 'Cidade é obrigatória');
-                    if (courseId) validateCourseSelection(courseId, value);
-                  }}
-                  disabled={!stateId}
-                >
-                  <SelectTrigger className={`w-full ${errors.cityId ? 'border-destructive' : ''}`}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={cityId}
+                    onValueChange={value => {
+                      setCityId(value);
+                      setUniversityId('');
+                      setUniversitySearch('');
+                      setUniversities([]);
+                      setCourseId('');
+                      setCourses([]);
+                      setFieldValidation('cityId', value ? undefined : 'Cidade é obrigatória');
+                      if (courseId) validateCourseSelection(courseId, value);
+                    }}
+                    disabled={!stateId}
+                  >
+                    <SelectTrigger
+                      className={`w-full ${errors.cityId ? 'border-destructive' : ''}`}
+                    >
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map(city => (
+                        <SelectItem key={city.id} value={city.id}>
+                          {city.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {errors.cityId && <p className="text-sm text-destructive">{errors.cityId}</p>}
               </div>
@@ -698,13 +663,17 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                     setIsUniversitySearchOpen(true);
                     setFieldValidation(
                       'universityId',
-                      value.trim() ? 'Selecione uma universidade da lista' : 'Universidade obrigatoria'
+                      value.trim()
+                        ? 'Selecione uma universidade da lista'
+                        : 'Universidade obrigatoria'
                     );
                   }}
                   onFocus={() => setIsUniversitySearchOpen(true)}
                   onBlur={() => window.setTimeout(() => setIsUniversitySearchOpen(false), 150)}
                   disabled={!cityId || isLoadingAcademicData}
-                  placeholder={cityId ? 'Digite pelo menos 2 letras' : 'Selecione uma cidade primeiro'}
+                  placeholder={
+                    cityId ? 'Digite pelo menos 2 letras' : 'Selecione uma cidade primeiro'
+                  }
                   className={errors.universityId ? 'border-destructive' : ''}
                 />
                 {isUniversitySearchOpen && cityId && (
@@ -756,9 +725,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                           setFieldValidation('courseId', 'Curso obrigatorio');
                         }}
                       >
-                        <span className="font-medium">
-                          {university.acronym || university.name}
-                        </span>
+                        <span className="font-medium">{university.acronym || university.name}</span>
                         {university.acronym && (
                           <span className="block text-xs text-muted-foreground">
                             {university.name}
@@ -770,31 +737,35 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                 )}
               </div>
               <div className="hidden">
-              <Select
-                value={universityId}
-                onValueChange={value => {
-                  setUniversityId(value);
-                  setFieldValidation(
-                    'universityId',
-                    value ? undefined : 'Universidade é obrigatória'
-                  );
-                  if (value === NOT_APPLICABLE) setFieldValidation('courseId');
-                  else setFieldValidation('courseId', 'Curso é obrigatório');
-                }}
-                disabled={isLoadingAcademicData}
-              >
-                <SelectTrigger className={`w-full ${errors.universityId ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                  {universities.map(university => (
-                    <SelectItem key={university.id} value={university.id}>
-                      {university.acronym ? `${university.acronym} - ${university.name}` : university.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={universityId}
+                  onValueChange={value => {
+                    setUniversityId(value);
+                    setFieldValidation(
+                      'universityId',
+                      value ? undefined : 'Universidade é obrigatória'
+                    );
+                    if (value === NOT_APPLICABLE) setFieldValidation('courseId');
+                    else setFieldValidation('courseId', 'Curso é obrigatório');
+                  }}
+                  disabled={isLoadingAcademicData}
+                >
+                  <SelectTrigger
+                    className={`w-full ${errors.universityId ? 'border-destructive' : ''}`}
+                  >
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
+                    {universities.map(university => (
+                      <SelectItem key={university.id} value={university.id}>
+                        {university.acronym
+                          ? `${university.acronym} - ${university.name}`
+                          : university.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {errors.universityId && (
                 <p className="text-sm text-destructive">{errors.universityId}</p>
@@ -865,26 +836,28 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                 )}
               </div>
               <div className="hidden">
-              <Select
-                value={courseId}
-                onValueChange={value => {
-                  setCourseId(value);
-                  validateCourseSelection(value);
-                }}
-                disabled={!universityId || universityId === NOT_APPLICABLE}
-              >
-                <SelectTrigger className={`w-full ${errors.courseId ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                  {courses.map(course => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={courseId}
+                  onValueChange={value => {
+                    setCourseId(value);
+                    validateCourseSelection(value);
+                  }}
+                  disabled={!universityId || universityId === NOT_APPLICABLE}
+                >
+                  <SelectTrigger
+                    className={`w-full ${errors.courseId ? 'border-destructive' : ''}`}
+                  >
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
+                    {courses.map(course => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {errors.courseId && <p className="text-sm text-destructive">{errors.courseId}</p>}
             </div>
@@ -987,7 +960,7 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                   const value = formatCPF(e.target.value);
                   setCpf(value);
                   if (!value) setFieldValidation('cpf', 'CPF é obrigatório');
-                  else setFieldValidation('cpf', isValidCPF(value) ? undefined : 'CPF inválido');
+                  else setFieldValidation('cpf', validateCPF(value) ? undefined : 'CPF inválido');
                 }}
                 className={errors.cpf ? 'border-destructive' : ''}
               />
@@ -1069,7 +1042,10 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
                       setFieldValidation('senha', 'Senha é obrigatória');
                     } else {
                       const validation = validatePassword(value);
-                      setFieldValidation('senha', validation.isValid ? undefined : validation.message);
+                      setFieldValidation(
+                        'senha',
+                        validation.isValid ? undefined : validation.message
+                      );
                     }
 
                     if (confirmarSenha) {
@@ -1167,7 +1143,10 @@ export default function SignUp({ onToggle, padrinhoSlug }: SignUpProps) {
         {currentStep === 0 && (
           <div className="mt-4 text-center text-sm">
             Já tem uma conta?{' '}
-            <button onClick={onToggle} className="text-primary hover:underline font-medium">
+            <button
+              onClick={() => navigate('/login')}
+              className="text-primary hover:underline font-medium"
+            >
               Entrar
             </button>
           </div>
