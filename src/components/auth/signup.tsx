@@ -68,6 +68,16 @@ const isValidCPF = (value: string) => {
 
 const NOT_APPLICABLE = 'not_applicable';
 
+const normalizeDateInput = (value: string) => {
+  const expandedYearDate = value.match(/^\+?(\d{4})\d+-(\d{2})-(\d{2})$/);
+
+  if (expandedYearDate) {
+    return `${expandedYearDate[1]}-${expandedYearDate[2]}-${expandedYearDate[3]}`;
+  }
+
+  return value;
+};
+
 export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: SignUpProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -571,9 +581,14 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
               <Input
                 id="admissionDate"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={admissionDate}
+                onInput={e => {
+                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
+                }}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = normalizeDateInput(e.target.value);
                   setAdmissionDate(value);
                   validateRequiredField('admissionDate', value, 'Data de ingresso é obrigatória');
                 }}
@@ -998,9 +1013,14 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
               <Input
                 id="dataNascimento"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={dataNascimento}
+                onInput={e => {
+                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
+                }}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = normalizeDateInput(e.target.value);
                   setDataNascimento(value);
                   validateRequiredField(
                     'dataNascimento',
