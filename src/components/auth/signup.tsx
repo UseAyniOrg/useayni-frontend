@@ -13,7 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PadrinhoSelector, findMemberById, findMemberBySlug, type Member } from './padrinho-selector';
+import {
+  PadrinhoSelector,
+  findMemberById,
+  findMemberBySlug,
+  type Member,
+} from './padrinho-selector';
 import { validatePassword } from '@/lib/password-validation';
 import { authService } from '@/lib/authService';
 import {
@@ -52,9 +57,7 @@ const isValidCPF = (value: string) => {
   if (/^(\d)\1{10}$/.test(cpf)) return false;
 
   const calculateDigit = (base: string, factor: number) => {
-    const total = base
-      .split('')
-      .reduce((sum, digit) => sum + Number(digit) * factor--, 0);
+    const total = base.split('').reduce((sum, digit) => sum + Number(digit) * factor--, 0);
     const remainder = (total * 10) % 11;
 
     return remainder === 10 ? 0 : remainder;
@@ -67,6 +70,16 @@ const isValidCPF = (value: string) => {
 };
 
 const NOT_APPLICABLE = 'not_applicable';
+
+const normalizeDateInput = (value: string) => {
+  const expandedYearDate = value.match(/^\+?(\d{4})\d+-(\d{2})-(\d{2})$/);
+
+  if (expandedYearDate) {
+    return `${expandedYearDate[1]}-${expandedYearDate[2]}-${expandedYearDate[3]}`;
+  }
+
+  return value;
+};
 
 export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: SignUpProps) {
   const navigate = useNavigate();
@@ -172,8 +185,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       .find(course => course.id === nextCourseId)
       ?.courseUniversities?.find(
         courseUniversity =>
-          courseUniversity.university_id === universityId &&
-          courseUniversity.city_id === nextCityId
+          courseUniversity.university_id === universityId && courseUniversity.city_id === nextCityId
       )?.id;
 
     setFieldValidation(
@@ -280,9 +292,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
 
     if (!query) return cities.slice(0, 50);
 
-    return cities
-      .filter(city => city.name.toLowerCase().includes(query))
-      .slice(0, 50);
+    return cities.filter(city => city.name.toLowerCase().includes(query)).slice(0, 50);
   }, [cities, citySearch]);
 
   const filteredCourses = useMemo(() => {
@@ -290,8 +300,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
 
     if (!query) return courses;
 
-    return courses
-      .filter(course => course.name.toLowerCase().includes(query));
+    return courses.filter(course => course.name.toLowerCase().includes(query));
   }, [courses, courseSearch]);
 
   useEffect(() => {
@@ -423,7 +432,12 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       if (!universityId) newErrors.universityId = 'Universidade é obrigatória';
       if (!courseId) newErrors.courseId = 'Curso é obrigatório';
       if (!currentSemester) newErrors.currentSemester = 'Semestre atual é obrigatório';
-      if (false && universityId !== NOT_APPLICABLE && courseId !== NOT_APPLICABLE && !selectedCourseUniversityId)
+      if (
+        false &&
+        universityId !== NOT_APPLICABLE &&
+        courseId !== NOT_APPLICABLE &&
+        !selectedCourseUniversityId
+      )
         newErrors.courseId = 'Curso não disponível para a cidade selecionada';
     }
 
@@ -485,27 +499,30 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
           sponsorId
         );
 
-      await authService.signUp({
-        name: `${nome} ${sobrenome}`,
-        cpf,
-        phone: telefone,
-        email_personal: emailPessoal,
-        email_university: emailUniversity,
-        birth_date: dataNascimento,
-        admission_date: admissionDate,
-        ra,
-        password: senha,
-        city_id: cityId,
-        sponsor: sponsorIsUuid ? sponsorId : padrinho?.name,
-        course_university_id: selectedCourseUniversityId,
-        current_semester:
-          currentSemester && currentSemester !== NOT_APPLICABLE
-            ? Number(currentSemester)
-            : undefined,
-        university_not_applicable: universityId === NOT_APPLICABLE,
-        course_not_applicable: courseId === NOT_APPLICABLE,
-        current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
-      }, sponsorIsUuid ? sponsorId : undefined);
+      await authService.signUp(
+        {
+          name: `${nome} ${sobrenome}`,
+          cpf,
+          phone: telefone,
+          email_personal: emailPessoal,
+          email_university: emailUniversity,
+          birth_date: dataNascimento,
+          admission_date: admissionDate,
+          ra,
+          password: senha,
+          city_id: cityId,
+          sponsor: sponsorIsUuid ? sponsorId : padrinho?.name,
+          course_university_id: selectedCourseUniversityId,
+          current_semester:
+            currentSemester && currentSemester !== NOT_APPLICABLE
+              ? Number(currentSemester)
+              : undefined,
+          university_not_applicable: universityId === NOT_APPLICABLE,
+          course_not_applicable: courseId === NOT_APPLICABLE,
+          current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
+        },
+        sponsorIsUuid ? sponsorId : undefined
+      );
 
       setRegistrationCompleted(true);
     } catch (error: unknown) {
@@ -571,9 +588,14 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
               <Input
                 id="admissionDate"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={admissionDate}
+                onInput={e => {
+                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
+                }}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = normalizeDateInput(e.target.value);
                   setAdmissionDate(value);
                   validateRequiredField('admissionDate', value, 'Data de ingresso é obrigatória');
                 }}
@@ -691,31 +713,33 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                   )}
                 </div>
                 <div className="hidden">
-                <Select
-                  value={cityId}
-                  onValueChange={value => {
-                    setCityId(value);
-                    setUniversityId('');
-                    setUniversitySearch('');
-                    setUniversities([]);
-                    setCourseId('');
-                    setCourses([]);
-                    setFieldValidation('cityId', value ? undefined : 'Cidade é obrigatória');
-                    if (courseId) validateCourseSelection(courseId, value);
-                  }}
-                  disabled={!stateId}
-                >
-                  <SelectTrigger className={`w-full ${errors.cityId ? 'border-destructive' : ''}`}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={cityId}
+                    onValueChange={value => {
+                      setCityId(value);
+                      setUniversityId('');
+                      setUniversitySearch('');
+                      setUniversities([]);
+                      setCourseId('');
+                      setCourses([]);
+                      setFieldValidation('cityId', value ? undefined : 'Cidade é obrigatória');
+                      if (courseId) validateCourseSelection(courseId, value);
+                    }}
+                    disabled={!stateId}
+                  >
+                    <SelectTrigger
+                      className={`w-full ${errors.cityId ? 'border-destructive' : ''}`}
+                    >
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map(city => (
+                        <SelectItem key={city.id} value={city.id}>
+                          {city.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {errors.cityId && <p className="text-sm text-destructive">{errors.cityId}</p>}
               </div>
@@ -735,13 +759,17 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                     setIsUniversitySearchOpen(true);
                     setFieldValidation(
                       'universityId',
-                      value.trim() ? 'Selecione uma universidade da lista' : 'Universidade obrigatoria'
+                      value.trim()
+                        ? 'Selecione uma universidade da lista'
+                        : 'Universidade obrigatoria'
                     );
                   }}
                   onFocus={() => setIsUniversitySearchOpen(true)}
                   onBlur={() => window.setTimeout(() => setIsUniversitySearchOpen(false), 150)}
                   disabled={!cityId || isLoadingAcademicData}
-                  placeholder={cityId ? 'Digite pelo menos 2 letras' : 'Selecione uma cidade primeiro'}
+                  placeholder={
+                    cityId ? 'Digite pelo menos 2 letras' : 'Selecione uma cidade primeiro'
+                  }
                   className={errors.universityId ? 'border-destructive' : ''}
                 />
                 {isUniversitySearchOpen && cityId && (
@@ -793,9 +821,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                           setFieldValidation('courseId', 'Curso obrigatorio');
                         }}
                       >
-                        <span className="font-medium">
-                          {university.acronym || university.name}
-                        </span>
+                        <span className="font-medium">{university.acronym || university.name}</span>
                         {university.acronym && (
                           <span className="block text-xs text-muted-foreground">
                             {university.name}
@@ -807,31 +833,35 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                 )}
               </div>
               <div className="hidden">
-              <Select
-                value={universityId}
-                onValueChange={value => {
-                  setUniversityId(value);
-                  setFieldValidation(
-                    'universityId',
-                    value ? undefined : 'Universidade é obrigatória'
-                  );
-                  if (value === NOT_APPLICABLE) setFieldValidation('courseId');
-                  else setFieldValidation('courseId', 'Curso é obrigatório');
-                }}
-                disabled={isLoadingAcademicData}
-              >
-                <SelectTrigger className={`w-full ${errors.universityId ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                  {universities.map(university => (
-                    <SelectItem key={university.id} value={university.id}>
-                      {university.acronym ? `${university.acronym} - ${university.name}` : university.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={universityId}
+                  onValueChange={value => {
+                    setUniversityId(value);
+                    setFieldValidation(
+                      'universityId',
+                      value ? undefined : 'Universidade é obrigatória'
+                    );
+                    if (value === NOT_APPLICABLE) setFieldValidation('courseId');
+                    else setFieldValidation('courseId', 'Curso é obrigatório');
+                  }}
+                  disabled={isLoadingAcademicData}
+                >
+                  <SelectTrigger
+                    className={`w-full ${errors.universityId ? 'border-destructive' : ''}`}
+                  >
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
+                    {universities.map(university => (
+                      <SelectItem key={university.id} value={university.id}>
+                        {university.acronym
+                          ? `${university.acronym} - ${university.name}`
+                          : university.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {errors.universityId && (
                 <p className="text-sm text-destructive">{errors.universityId}</p>
@@ -902,26 +932,28 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                 )}
               </div>
               <div className="hidden">
-              <Select
-                value={courseId}
-                onValueChange={value => {
-                  setCourseId(value);
-                  validateCourseSelection(value);
-                }}
-                disabled={!universityId || universityId === NOT_APPLICABLE}
-              >
-                <SelectTrigger className={`w-full ${errors.courseId ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                  {courses.map(course => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={courseId}
+                  onValueChange={value => {
+                    setCourseId(value);
+                    validateCourseSelection(value);
+                  }}
+                  disabled={!universityId || universityId === NOT_APPLICABLE}
+                >
+                  <SelectTrigger
+                    className={`w-full ${errors.courseId ? 'border-destructive' : ''}`}
+                  >
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
+                    {courses.map(course => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {errors.courseId && <p className="text-sm text-destructive">{errors.courseId}</p>}
             </div>
@@ -998,9 +1030,14 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
               <Input
                 id="dataNascimento"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={dataNascimento}
+                onInput={e => {
+                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
+                }}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = normalizeDateInput(e.target.value);
                   setDataNascimento(value);
                   validateRequiredField(
                     'dataNascimento',
@@ -1106,7 +1143,10 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                       setFieldValidation('senha', 'Senha é obrigatória');
                     } else {
                       const validation = validatePassword(value);
-                      setFieldValidation('senha', validation.isValid ? undefined : validation.message);
+                      setFieldValidation(
+                        'senha',
+                        validation.isValid ? undefined : validation.message
+                      );
                     }
 
                     if (confirmarSenha) {
