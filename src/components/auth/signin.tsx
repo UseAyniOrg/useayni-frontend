@@ -5,16 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { authService } from '@/lib/authService';
+import { Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
+import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-interface SignInProps {
-  onToggle: () => void;
-}
-
-export default function SignIn({ onToggle }: SignInProps) {
+export default function SignIn() {
   const navigate = useNavigate();
   const { setUser } = useAuthContext();
   const [email, setEmail] = useState('');
@@ -72,8 +68,8 @@ export default function SignIn({ onToggle }: SignInProps) {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(', ')
         : typeof responseMessage === 'string'
-          ? responseMessage
-          : 'Credenciais invalidas';
+        ? responseMessage
+        : 'Credenciais invalidas';
       // RATE LIMIT
       if (status === 429) {
         setError('Muitas tentativas. Tente novamente mais tarde.');
@@ -105,7 +101,8 @@ export default function SignIn({ onToggle }: SignInProps) {
           )}
 
           {isBlocked && (
-            <Alert>
+            <Alert variant="destructive">
+              <ShieldAlert />
               <AlertTitle>Login bloqueado</AlertTitle>
 
               <AlertDescription>
@@ -119,7 +116,7 @@ export default function SignIn({ onToggle }: SignInProps) {
             <Input
               id="email"
               type="email"
-              placeholder="email pessoal cadastrado"
+              placeholder="Email pessoal cadastrado"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -168,6 +165,14 @@ export default function SignIn({ onToggle }: SignInProps) {
                 Lembrar de mim
               </label>
             </div>
+            <div>
+              <button
+                className="text-primary hover:underline font-medium text-sm"
+                onClick={() => navigate('/recuperar-senha')}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading || isBlocked}>
@@ -186,7 +191,10 @@ export default function SignIn({ onToggle }: SignInProps) {
 
         <div className="mt-4 text-center text-sm">
           Nao tem uma conta?{' '}
-          <button onClick={onToggle} className="text-primary hover:underline font-medium">
+          <button
+            onClick={() => navigate('/cadastro')}
+            className="text-primary hover:underline font-medium"
+          >
             Cadastre-se
           </button>
         </div>

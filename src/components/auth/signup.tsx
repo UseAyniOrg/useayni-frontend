@@ -19,8 +19,8 @@ import {
   findMemberBySlug,
   type Member,
 } from './padrinho-selector';
-import { validatePassword } from '@/lib/password-validation';
-import { authService } from '@/lib/authService';
+import { validatePassword } from '@/utils/password';
+import { authService } from '@/lib/auth/authService';
 import {
   academicService,
   type CityOption,
@@ -28,60 +28,19 @@ import {
   type StateOption,
   type UniversityOption,
 } from '@/services/academicService';
+import { validateCPF } from '@/utils/cpf';
+import { formatCPF } from '@/utils/cpf';
+import { formatPhone } from '@/utils/phone';
+import { validateEmail } from '@/utils/email';
 
 interface SignUpProps {
-  onToggle: () => void;
   padrinhoSlug?: string | null;
   sponsorMemberId?: string | null;
 }
 
-const formatCPF = (value: string) =>
-  value
-    .replace(/\D/g, '')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-    .replace(/(-\d{2})\d+?$/, '$1');
-
-const formatPhone = (value: string) =>
-  value
-    .replace(/\D/g, '')
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{4,5})(\d{4})/, '$1-$2')
-    .replace(/(-\d{4})\d+?$/, '$1');
-
-const isValidCPF = (value: string) => {
-  const cpf = value.replace(/\D/g, '');
-
-  if (cpf.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
-
-  const calculateDigit = (base: string, factor: number) => {
-    const total = base.split('').reduce((sum, digit) => sum + Number(digit) * factor--, 0);
-    const remainder = (total * 10) % 11;
-
-    return remainder === 10 ? 0 : remainder;
-  };
-
-  const firstDigit = calculateDigit(cpf.slice(0, 9), 10);
-  const secondDigit = calculateDigit(cpf.slice(0, 10), 11);
-
-  return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
-};
-
 const NOT_APPLICABLE = 'not_applicable';
 
-const normalizeDateInput = (value: string) => {
-  const expandedYearDate = value.match(/^\+?(\d{4})\d+-(\d{2})-(\d{2})$/);
-
-  if (expandedYearDate) {
-    return `${expandedYearDate[1]}-${expandedYearDate[2]}-${expandedYearDate[3]}`;
-  }
-
-  return value;
-};
-
-export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: SignUpProps) {
+export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -164,10 +123,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       return;
     }
 
-    setFieldValidation(
-      fieldName,
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? undefined : 'Email inválido'
-    );
+    setFieldValidation(fieldName, validateEmail(value) ? undefined : 'Email inválido');
   };
 
   const validateCourseSelection = (nextCourseId = courseId, nextCityId = cityId) => {
@@ -425,8 +381,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       if (!ra) newErrors.ra = 'RA é obrigatório';
       if (!admissionDate) newErrors.admissionDate = 'Data de ingresso é obrigatória';
       if (!emailUniversity) newErrors.emailUniversity = 'Email acadêmico é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailUniversity))
-        newErrors.emailUniversity = 'Email inválido';
+      else if (!validateEmail(emailUniversity)) newErrors.emailUniversity = 'Email inválido';
       if (!stateId) newErrors.stateId = 'Estado é obrigatório';
       if (!cityId) newErrors.cityId = 'Cidade é obrigatória';
       if (!universityId) newErrors.universityId = 'Universidade é obrigatória';
@@ -446,12 +401,11 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       if (!sobrenome) newErrors.sobrenome = 'Sobrenome é obrigatório';
       if (!dataNascimento) newErrors.dataNascimento = 'Data de nascimento é obrigatória';
       if (!cpf) newErrors.cpf = 'CPF é obrigatório';
-      else if (!isValidCPF(cpf)) newErrors.cpf = 'CPF inválido';
+      else if (!validateCPF(cpf)) newErrors.cpf = 'CPF inválido';
       if (!telefone) newErrors.telefone = 'Telefone é obrigatório';
       else if (telefone.replace(/\D/g, '').length < 10) newErrors.telefone = 'Telefone inválido';
       if (!emailPessoal) newErrors.emailPessoal = 'Email pessoal é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPessoal))
-        newErrors.emailPessoal = 'Email inválido';
+      else if (!validateEmail(emailPessoal)) newErrors.emailPessoal = 'Email inválido';
     }
 
     if (step === 2) {
@@ -533,8 +487,8 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(', ')
         : typeof responseMessage === 'string'
-          ? responseMessage
-          : 'Erro ao criar conta. Tente novamente.';
+        ? responseMessage
+        : 'Erro ao criar conta. Tente novamente.';
       setApiError(message);
     } finally {
       setIsLoading(false);
@@ -591,11 +545,8 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                 min="0001-01-01"
                 max="9999-12-31"
                 value={admissionDate}
-                onInput={e => {
-                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
-                }}
                 onChange={e => {
-                  const value = normalizeDateInput(e.target.value);
+                  const value = e.target.value;
                   setAdmissionDate(value);
                   validateRequiredField('admissionDate', value, 'Data de ingresso é obrigatória');
                 }}
@@ -1033,11 +984,8 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                 min="0001-01-01"
                 max="9999-12-31"
                 value={dataNascimento}
-                onInput={e => {
-                  e.currentTarget.value = normalizeDateInput(e.currentTarget.value);
-                }}
                 onChange={e => {
-                  const value = normalizeDateInput(e.target.value);
+                  const value = e.target.value;
                   setDataNascimento(value);
                   validateRequiredField(
                     'dataNascimento',
@@ -1061,7 +1009,7 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
                   const value = formatCPF(e.target.value);
                   setCpf(value);
                   if (!value) setFieldValidation('cpf', 'CPF é obrigatório');
-                  else setFieldValidation('cpf', isValidCPF(value) ? undefined : 'CPF inválido');
+                  else setFieldValidation('cpf', validateCPF(value) ? undefined : 'CPF inválido');
                 }}
                 className={errors.cpf ? 'border-destructive' : ''}
               />
@@ -1244,7 +1192,10 @@ export default function SignUp({ onToggle, padrinhoSlug, sponsorMemberId }: Sign
         {currentStep === 0 && (
           <div className="mt-4 text-center text-sm">
             Já tem uma conta?{' '}
-            <button onClick={onToggle} className="text-primary hover:underline font-medium">
+            <button
+              onClick={() => navigate('/login')}
+              className="text-primary hover:underline font-medium"
+            >
               Entrar
             </button>
           </div>
