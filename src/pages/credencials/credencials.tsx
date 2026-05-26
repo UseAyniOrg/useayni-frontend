@@ -8,11 +8,14 @@ export default function Credentials() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [padrinhoSlug, setPadrinhoSlug] = useState<string | null>(null);
+  const [sponsorMemberId, setSponsorMemberId] = useState<string | null>(null);
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot-password'>('login');
 
   useEffect(() => {
     const padrinho = searchParams.get("padrinho");
+    const memberId = searchParams.get("memberId");
     setPadrinhoSlug(padrinho);
+    setSponsorMemberId(memberId);
 
     if(location.pathname === "/login") setMode('login');
     else if(location.pathname === '/cadastro') setMode('signup');
@@ -27,7 +30,7 @@ export default function Credentials() {
         </div>
 
         {mode === "login" && <SignIn/>}
-        {mode === "signup" && <SignUp padrinhoSlug={padrinhoSlug}/>}
+        {mode === "signup" && <SignUp padrinhoSlug={padrinhoSlug} sponsorMemberId={sponsorMemberId}/>}
         {mode === "forgot-password" && <ForgotPassword/>}
       </div>
     </div>

@@ -13,7 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PadrinhoSelector, findMemberBySlug, type Member } from './padrinho-selector';
+import {
+  PadrinhoSelector,
+  findMemberById,
+  findMemberBySlug,
+  type Member,
+} from './padrinho-selector';
 import { validatePassword } from '@/utils/password';
 import { authService } from '@/lib/auth/authService';
 import {
@@ -30,11 +35,12 @@ import { validateEmail } from '@/utils/email';
 
 interface SignUpProps {
   padrinhoSlug?: string | null;
+  sponsorMemberId?: string | null;
 }
 
 const NOT_APPLICABLE = 'not_applicable';
 
-export default function SignUp({ padrinhoSlug }: SignUpProps) {
+export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -145,12 +151,41 @@ export default function SignUp({ padrinhoSlug }: SignUpProps) {
   };
 
   useEffect(() => {
-    if (padrinhoSlug) {
-      const found = findMemberBySlug(padrinhoSlug);
-      if (found) setPadrinho(found);
-      else setErrors(prev => ({ ...prev, padrinho: 'Padrinho não encontrado' }));
-    }
-  }, [padrinhoSlug]);
+    let isMounted = true;
+
+    const loadInitialSponsor = async () => {
+      if (sponsorMemberId) {
+        const found = await findMemberById(sponsorMemberId);
+        if (!isMounted) return;
+
+        setPadrinho(
+          found || {
+            id: sponsorMemberId,
+            name: 'Padrinho informado',
+            slug: '',
+            course: '',
+            university: '',
+          }
+        );
+        clearFieldError('padrinho');
+        return;
+      }
+
+      if (padrinhoSlug) {
+        const found = await findMemberBySlug(padrinhoSlug);
+        if (!isMounted) return;
+
+        if (found) setPadrinho(found);
+        else setErrors(prev => ({ ...prev, padrinho: 'Padrinho não encontrado' }));
+      }
+    };
+
+    loadInitialSponsor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [padrinhoSlug, sponsorMemberId]);
 
   useEffect(() => {
     const loadAcademicData = async () => {
@@ -411,27 +446,37 @@ export default function SignUp({ padrinhoSlug }: SignUpProps) {
     setApiError('');
 
     try {
-      await authService.signUp({
-        name: `${nome} ${sobrenome}`,
-        cpf,
-        phone: telefone,
-        email_personal: emailPessoal,
-        email_university: emailUniversity,
-        birth_date: dataNascimento,
-        admission_date: admissionDate,
-        ra,
-        password: senha,
-        city_id: cityId,
-        sponsor: padrinho?.name,
-        course_university_id: selectedCourseUniversityId,
-        current_semester:
-          currentSemester && currentSemester !== NOT_APPLICABLE
-            ? Number(currentSemester)
-            : undefined,
-        university_not_applicable: universityId === NOT_APPLICABLE,
-        course_not_applicable: courseId === NOT_APPLICABLE,
-        current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
-      });
+      const sponsorId = padrinho?.id;
+      const sponsorIsUuid =
+        !!sponsorId &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          sponsorId
+        );
+
+      await authService.signUp(
+        {
+          name: `${nome} ${sobrenome}`,
+          cpf,
+          phone: telefone,
+          email_personal: emailPessoal,
+          email_university: emailUniversity,
+          birth_date: dataNascimento,
+          admission_date: admissionDate,
+          ra,
+          password: senha,
+          city_id: cityId,
+          sponsor: sponsorIsUuid ? sponsorId : padrinho?.name,
+          course_university_id: selectedCourseUniversityId,
+          current_semester:
+            currentSemester && currentSemester !== NOT_APPLICABLE
+              ? Number(currentSemester)
+              : undefined,
+          university_not_applicable: universityId === NOT_APPLICABLE,
+          course_not_applicable: courseId === NOT_APPLICABLE,
+          current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
+        },
+        sponsorIsUuid ? sponsorId : undefined
+      );
 
       setRegistrationCompleted(true);
     } catch (error: unknown) {
@@ -497,6 +542,8 @@ export default function SignUp({ padrinhoSlug }: SignUpProps) {
               <Input
                 id="admissionDate"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={admissionDate}
                 onChange={e => {
                   const value = e.target.value;
@@ -934,6 +981,8 @@ export default function SignUp({ padrinhoSlug }: SignUpProps) {
               <Input
                 id="dataNascimento"
                 type="date"
+                min="0001-01-01"
+                max="9999-12-31"
                 value={dataNascimento}
                 onChange={e => {
                   const value = e.target.value;

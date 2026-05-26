@@ -19,8 +19,10 @@ export const authService = {
     return { user, accessToken, refreshToken };
   },
 
-  async signUp(data: SignUpData): Promise<SignUpResponse> {
-    const response = await api.post<SignUpResponse>('/members', data);
+  async signUp(data: SignUpData, sponsorMemberId?: string): Promise<SignUpResponse> {
+    const response = await api.post<SignUpResponse>('/members', data, {
+      params: sponsorMemberId ? { memberId: sponsorMemberId } : undefined,
+    });
     return response.data;
   },
 
