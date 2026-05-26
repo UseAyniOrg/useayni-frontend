@@ -8,14 +8,17 @@ export default function Credentials() {
   const location = useLocation();
   const [isSignUp, setIsSignUp] = useState(false);
   const [padrinhoSlug, setPadrinhoSlug] = useState<string | null>(null);
+  const [sponsorMemberId, setSponsorMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     const mode = searchParams.get("mode");
     const padrinho = searchParams.get("padrinho");
+    const memberId = searchParams.get("memberId");
     const isSignupRoute = location.pathname === "/cadastro";
 
     setIsSignUp(mode === "signup" || isSignupRoute);
     setPadrinhoSlug(padrinho);
+    setSponsorMemberId(memberId);
   }, [searchParams, location.pathname]);
 
   const toggleMode = () => {
@@ -30,7 +33,11 @@ export default function Credentials() {
         </div>
 
         {isSignUp ? (
-          <SignUp onToggle={toggleMode} padrinhoSlug={padrinhoSlug} />
+          <SignUp
+            onToggle={toggleMode}
+            padrinhoSlug={padrinhoSlug}
+            sponsorMemberId={sponsorMemberId}
+          />
         ) : (
           <SignIn onToggle={toggleMode} />
         )}
