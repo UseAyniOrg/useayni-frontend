@@ -2,25 +2,25 @@ import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import SignIn from "@/components/auth/signin";
 import SignUp from "@/components/auth/signup";
+import { ForgotPassword } from "@/components/auth/forgot-password";
 
 export default function Credentials() {
-  const [searchParams] = useSearchParams();
   const location = useLocation();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
   const [padrinhoSlug, setPadrinhoSlug] = useState<string | null>(null);
+  const [sponsorMemberId, setSponsorMemberId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot-password'>('login');
 
   useEffect(() => {
-    const mode = searchParams.get("mode");
     const padrinho = searchParams.get("padrinho");
-    const isSignupRoute = location.pathname === "/cadastro";
-
-    setIsSignUp(mode === "signup" || isSignupRoute);
+    const memberId = searchParams.get("memberId");
     setPadrinhoSlug(padrinho);
-  }, [searchParams, location.pathname]);
+    setSponsorMemberId(memberId);
 
-  const toggleMode = () => {
-    setIsSignUp(current => !current);
-  };
+    if(location.pathname === "/login") setMode('login');
+    else if(location.pathname === '/cadastro') setMode('signup');
+    else if(location.pathname === '/recuperar-senha') setMode('forgot-password');
+  }, [searchParams, location.pathname]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-alice-blue to-bright-snow p-4">
@@ -29,11 +29,9 @@ export default function Credentials() {
           <img src="/Ayni.svg" alt="Ayni Logo" className="h-16 w-auto" />
         </div>
 
-        {isSignUp ? (
-          <SignUp onToggle={toggleMode} padrinhoSlug={padrinhoSlug} />
-        ) : (
-          <SignIn onToggle={toggleMode} />
-        )}
+        {mode === "login" && <SignIn/>}
+        {mode === "signup" && <SignUp padrinhoSlug={padrinhoSlug} sponsorMemberId={sponsorMemberId}/>}
+        {mode === "forgot-password" && <ForgotPassword/>}
       </div>
     </div>
   );

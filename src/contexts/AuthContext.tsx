@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { authService } from '@/lib/authService';
+import { authService } from '@/lib/auth/authService';
 
 export interface MemberPosition {
   type: 'REPRESENTANTE' | 'DIRIGENTE' | 'CAR' | 'CAE';
