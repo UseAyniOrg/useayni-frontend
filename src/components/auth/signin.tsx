@@ -1,23 +1,46 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
 import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import FormField from '../common/FormField';
+
+const loginFormSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'Senha obrigatória'),
+  rememberMe: z.boolean(),
+});
+type LoginFormData = z.infer<typeof loginFormSchema>;
 
 export default function SignIn() {
+  const {
+    register,
+    control,
+    handleSubmit,
+    clearErrors,
+    setError,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      rememberMe: false,
+    },
+  });
+
   const navigate = useNavigate();
   const { setUser } = useAuthContext();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const error = Object.values(errors)[0]?.message ?? errors.root?.message;
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
   const [remainingTime, setRemainingTime] = useState(0);
@@ -44,17 +67,17 @@ export default function SignIn() {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     if (isBlocked) return;
-    setError('');
+    clearErrors();
     setIsLoading(true);
+    console.log(data);
 
     try {
       const { user } = await authService.login({
-        personalEmail: email,
-        password,
-        rememberMe,
+        personalEmail: data.email,
+        password: data.password,
+        rememberMe: data.rememberMe,
       });
       setUser(user);
       navigate('/home');
@@ -72,13 +95,15 @@ export default function SignIn() {
         : 'Credenciais invalidas';
       // RATE LIMIT
       if (status === 429) {
-        setError('Muitas tentativas. Tente novamente mais tarde.');
+        setError('root', {
+          message: 'Muitas tentativas. Tente novamente mais tarde.',
+        });
         // backend ideal envia retryAfter
         const retryAfter = err?.response?.data?.retryAfter || 900;
         setBlockedUntil(Date.now() + retryAfter * 1000);
         return;
       }
-      setError(message);
+      setError('root', { message });
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +118,7 @@ export default function SignIn() {
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-100 px-4 py-3 text-sm text-red-700">
               {error}
@@ -111,32 +136,25 @@ export default function SignIn() {
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email pessoal</Label>
+          <FormField id="email" label="Email pessoal">
             <Input
               id="email"
               type="email"
               placeholder="Email pessoal cadastrado"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
               disabled={isLoading || isBlocked}
+              {...register('email')}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-
+          <FormField id="password" label="Senha">
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Digite sua senha"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
                 className="pr-10"
-                required
                 disabled={isLoading || isBlocked}
+                {...register('password')}
               />
 
               <Button
@@ -150,18 +168,24 @@ export default function SignIn() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
-          </div>
+          </FormField>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={checked => setRememberMe(checked as boolean)}
-                disabled={isLoading || isBlocked}
+              <Controller
+                name="rememberMe"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="rememberMe"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isLoading || isBlocked}
+                  />
+                )}
               />
 
-              <label htmlFor="remember" className="text-sm font-medium leading-none">
+              <label htmlFor="rememberMe" className="text-sm font-medium leading-none">
                 Lembrar de mim
               </label>
             </div>

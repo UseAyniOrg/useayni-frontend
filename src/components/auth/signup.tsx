@@ -275,7 +275,7 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
 
     const query = universitySearch.trim();
     if (query.length < 2) {
-      const timeoutId = window.setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
         setIsSearchingUniversities(true);
         setAcademicDataError('');
 

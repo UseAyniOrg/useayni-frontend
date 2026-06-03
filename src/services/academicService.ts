@@ -57,6 +57,14 @@ export const academicService = {
     return response.data;
   },
 
+  async getUniversitiesByCity(cityId: string) {
+    const response = await api.get<UniversityOption[]>('/universities', {
+      params: {cityId}
+    });
+
+    return response.data;
+  },
+
   async getCoursesByUniversity(universityId: string, cityId?: string) {
     const response = await api.get<CourseOption[]>('/courses', {
       params: { universityId, cityId },
