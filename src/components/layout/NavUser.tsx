@@ -1,13 +1,23 @@
-import { useNavigate } from "react-router-dom";
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut, Settings } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from 'react-router-dom';
+import { BadgeCheck, Bell, ChevronsUpDown, LogOut, Settings } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
-import { authService } from "@/lib/authService";
-import { useAuthContext } from "@/contexts/AuthContext";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { authService } from '@/lib/auth/authService';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export function NavUser({
   user,
@@ -21,17 +31,23 @@ export function NavUser({
   const handleLogout = async () => {
     await authService.logout();
     clearAuth();
-    navigate("/login");
+    navigate('/login');
   };
 
-  const initials = user.name.split(" ").map(n => n[0]).join("");
+  const initials = user.name
+    .split(' ')
+    .map(n => n[0])
+    .join('');
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
               <Avatar className="h-8 w-8 rounded-lg shrink-0">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
@@ -45,7 +61,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -63,7 +79,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => navigate("/membros/" + user.slug)}>
+              <DropdownMenuItem onSelect={() => navigate('/membros/' + user.slug)}>
                 <BadgeCheck />
                 Conta
               </DropdownMenuItem>

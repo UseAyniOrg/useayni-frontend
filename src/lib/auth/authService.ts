@@ -1,43 +1,7 @@
 import { api } from '@/lib/api';
 import type { AuthUser } from '@/contexts/AuthContext';
-
-interface LoginCredentials {
-  personalEmail: string;
-  password: string;
-  rememberMe?: boolean;
-}
-
-interface LoginResponse {
-  member: {
-    id: string;
-    email_personal: string;
-    name: string;
-    roles: string[];
-  };
-  accessToken: string;
-  refreshToken?: string;
-}
-
-interface SignUpData {
-  name: string;
-  cpf: string;
-  phone: string;
-  email_personal: string;
-  email_university: string;
-  birth_date: string;
-  admission_date: string;
-  ra: string;
-  password: string;
-  city_id?: string;
-  course_university_id?: string;
-  sponsor?: string;
-}
-
-interface SignUpResponse {
-  message: string;
-  data: Record<string, unknown>;
-  accessToken: string;
-}
+import { getCookie, removeCookie, setCookie } from './cookies';
+import type { LoginCredentials, LoginResponse, SignUpData, SignUpResponse } from './authTypes';
 
 export const authService = {
   async login(
@@ -45,26 +9,21 @@ export const authService = {
   ): Promise<{ user: AuthUser; accessToken: string; refreshToken?: string }> {
     const response = await api.post<LoginResponse>('/auth/login', credentials);
     const { accessToken, refreshToken } = response.data;
+    const user = parseJwt(accessToken);
 
     setCookie('accessToken', accessToken);
     if (refreshToken) setCookie('refreshToken', refreshToken);
 
-    const user = parseJwt(accessToken);
-    if (!user) throw new Error('Token inválido recebido do servidor');
+    if (!user) throw new Error('Token invalido recebido do servidor');
 
     return { user, accessToken, refreshToken };
   },
 
-  async signUp(data: SignUpData): Promise<{ user: AuthUser; accessToken: string }> {
-    const response = await api.post<SignUpResponse>('/members', data);
-    const { accessToken } = response.data;
-
-    setCookie('accessToken', accessToken);
-
-    const user = parseJwt(accessToken);
-    if (!user) throw new Error('Token inválido recebido do servidor');
-
-    return { user, accessToken };
+  async signUp(data: SignUpData, sponsorMemberId?: string): Promise<SignUpResponse> {
+    const response = await api.post<SignUpResponse>('/members', data, {
+      params: sponsorMemberId ? { memberId: sponsorMemberId } : undefined,
+    });
+    return response.data;
   },
 
   async logout(): Promise<void> {
@@ -88,7 +47,7 @@ export const authService = {
 
   async refreshToken(): Promise<string> {
     const refreshToken = getCookie('refreshToken');
-    if (!refreshToken) throw new Error('Refresh token não encontrado');
+    if (!refreshToken) throw new Error('Refresh token nao encontrado');
 
     const response = await api.post<{ accessToken: string; refreshToken: string }>(
       '/auth/refresh-token',
@@ -128,17 +87,3 @@ function parseJwt(token: string): AuthUser | null {
   }
 }
 
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-}
-
-function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; samesite=strict`;
-}
-
-function removeCookie(name: string) {
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-}
