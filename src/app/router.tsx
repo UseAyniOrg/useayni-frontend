@@ -22,6 +22,10 @@ export const router = createBrowserRouter([
     element: <Credentials />,
   },
   {
+    path: "/recuperar-senha",
+    element: <Credentials />
+  },
+  {
     path: "/home",
     element: (
       <ProtectedRoute>

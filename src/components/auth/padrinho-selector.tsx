@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { api } from "@/lib/api";
 
 export interface Member {
   id: string;
@@ -33,20 +34,41 @@ interface PadrinhoSelectorProps {
   onSelect: (member: Member | null) => void;
 }
 
-const mockMembers: Member[] = [
-  { id: "1", name: "João Silva", slug: "joao-silva", course: "Ciência da Computação", university: "UNIFESP" },
-  { id: "2", name: "Maria Santos", slug: "maria-santos", course: "Engenharia de Software", university: "USP" },
-  { id: "3", name: "Pedro Costa", slug: "pedro-costa", course: "Sistemas de Informação", university: "UNESP" },
-  { id: "4", name: "Ana Oliveira", slug: "ana-oliveira", course: "Análise e Desenvolvimento", university: "PUC-SP" },
-  { id: "5", name: "Carlos Ferreira", slug: "carlos-ferreira", course: "Ciência da Computação", university: "UNIFESP" },
-  { id: "6", name: "Lucia Mendes", slug: "lucia-mendes", course: "Engenharia de Software", university: "USP" },
-  { id: "7", name: "Roberto Lima", slug: "roberto-lima", course: "Sistemas de Informação", university: "UNESP" },
-  { id: "8", name: "Fernanda Rocha", slug: "fernanda-rocha", course: "Análise e Desenvolvimento", university: "PUC-SP" },
-  { id: "9", name: "Leonardo Paniz Aguiar", slug: "leonardo-paniz-aguiar", course: "Ciência da Computação", university: "UNIFESP" },
-];
+interface SponsorOptionResponse {
+  id: string;
+  name: string;
+  slug?: string | null;
+  profile_picture_url?: string | null;
+  course?: {
+    name: string;
+  };
+  university?: {
+    name: string;
+  };
+}
 
-export const findMemberBySlug = (slug: string): Member | null => {
-  return mockMembers.find(member => member.slug === slug) || null;
+const mapSponsorOption = (member: SponsorOptionResponse): Member => ({
+  id: member.id,
+  name: member.name,
+  slug: member.slug || "",
+  course: member.course?.name || "",
+  university: member.university?.name || "",
+  avatar: member.profile_picture_url || undefined,
+});
+
+const getSponsorOptions = async (): Promise<Member[]> => {
+  const response = await api.get<SponsorOptionResponse[]>("/members/sponsors/options");
+  return response.data.map(mapSponsorOption);
+};
+
+export const findMemberBySlug = async (slug: string): Promise<Member | null> => {
+  const members = await getSponsorOptions();
+  return members.find(member => member.slug === slug) || null;
+};
+
+export const findMemberById = async (id: string): Promise<Member | null> => {
+  const members = await getSponsorOptions();
+  return members.find(member => member.id === id) || null;
 };
 
 const ITEMS_PER_PAGE = 5;
@@ -58,8 +80,35 @@ export function PadrinhoSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
-  const filteredMembers = mockMembers.filter((member) =>
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMembers = async () => {
+      setIsLoading(true);
+      setLoadError("");
+
+      try {
+        const sponsorOptions = await getSponsorOptions();
+        if (isMounted) setMembers(sponsorOptions);
+      } catch {
+        if (isMounted) setLoadError("Nao foi possivel carregar os padrinhos.");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadMembers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredMembers = members.filter((member) =>
     member.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -90,6 +139,7 @@ export function PadrinhoSelector({
     return (
       <div className="flex gap-0">
         <Button
+          type="button"
           variant="outline"
           className="flex-1 justify-start gap-2 rounded-r-none">
           <Avatar className="w-6 h-6">
@@ -104,6 +154,7 @@ export function PadrinhoSelector({
           <span className="truncate">{selectedPadrinho.name}</span>
         </Button>
         <Button
+          type="button"
           variant="outline"
           size="icon"
           onClick={handleRemove}
@@ -117,7 +168,7 @@ export function PadrinhoSelector({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full justify-start gap-2">
+        <Button type="button" variant="outline" className="w-full justify-start gap-2">
           <UserPlus className="w-4 h-4" />
           Escolher padrinho
         </Button>
@@ -147,7 +198,28 @@ export function PadrinhoSelector({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedMembers.map((member) => (
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                      Carregando...
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && loadError && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm text-destructive">
+                      {loadError}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && !loadError && paginatedMembers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                      Nenhum padrinho encontrado
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && !loadError && paginatedMembers.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -165,19 +237,20 @@ export function PadrinhoSelector({
                             {member.name}
                           </div>
                           <div className="text-sm text-muted-foreground sm:hidden">
-                            {member.course} - {member.university}
+                            {[member.course, member.university].filter(Boolean).join(" - ")}
                           </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <div className="truncate">{member.course}</div>
+                      <div className="truncate">{member.course || "-"}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <div className="truncate">{member.university}</div>
+                      <div className="truncate">{member.university || "-"}</div>
                     </TableCell>
                     <TableCell>
                       <Button
+                        type="button"
                         size="sm"
                         onClick={() => handleSelect(member)}
                         className="w-full sm:w-auto">
@@ -192,11 +265,11 @@ export function PadrinhoSelector({
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Página {currentPage} de {totalPages} ({filteredMembers.length}{" "}
-                membros)
+                Pagina {currentPage} de {totalPages} ({filteredMembers.length} membros)
               </div>
               <div className="flex gap-2">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(currentPage - 1)}
@@ -204,6 +277,7 @@ export function PadrinhoSelector({
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(currentPage + 1)}
