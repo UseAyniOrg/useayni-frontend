@@ -23,6 +23,7 @@ import {
   CheckSquare,
   Settings,
   ChevronRight,
+  PlusCircle,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AccountSwitcher } from './AccountSwitcher';
@@ -84,6 +85,13 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Miscelâneas" onClick={() => navigate('/miscelaneas')}>
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Miscelâneas</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Chats">
                   <MessageSquare className="h-4 w-4" />

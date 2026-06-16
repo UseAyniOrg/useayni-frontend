@@ -4,6 +4,8 @@ import Credentials from "../pages/credencials/credencials.tsx";
 import Home from "../pages/home/home.tsx";
 import { ProtectedRoute } from "../components/ProtectedRoute.tsx";
 import MemberProfile from "@/pages/member-profile/member-profile.tsx";
+import CreateMiscellaneous from "@/pages/miscellaneous/create-miscellaneous.tsx";
+import ListMiscellaneous from "@/pages/miscellaneous/list-miscellaneous.tsx";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +33,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MemberProfile />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas",
+    element: (
+      <ProtectedRoute>
+        <ListMiscellaneous />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas/nova",
+    element: (
+      <ProtectedRoute>
+        <CreateMiscellaneous />
       </ProtectedRoute>
     ),
   },
