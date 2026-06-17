@@ -52,17 +52,17 @@ export const router = createBrowserRouter([
   {
     path: "/cadastro-pendente",
     element: (
-      // <ProtectedRoute skipPendingCheck>
+      <ProtectedRoute skipPendingCheck>
         <PendingApproval />
-      // </ProtectedRoute>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/aprovacao-membros",
     element: (
-      // <ProtectedRoute requiresApprovalAccess>
+      <ProtectedRoute requiresApprovalAccess>
         <MemberApproval />
-      // </ProtectedRoute>
+      </ProtectedRoute>
     ),
   },
 ]);

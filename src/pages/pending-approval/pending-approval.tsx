@@ -1,5 +1,5 @@
 import { useAuthContext } from '@/contexts/AuthContext';
-import { authService } from '@/lib/authService';
+import { authService } from '@/lib/auth/authService';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

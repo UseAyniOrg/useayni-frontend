@@ -301,13 +301,14 @@ export default function MemberApproval() {
   );
 }
 
+type PendingMemberCourse = NonNullable<PendingMember['memberCourses']>[number];
 interface MemberDetailProps {
   member: PendingMember;
   onApprove: () => void;
   onReject: () => void;
   formatDate: (d?: string) => string;
   formatCPF: (cpf?: string) => string;
-  activeCourse: (m: PendingMember) => PendingMember['memberCourses'][0] | null;
+  activeCourse: (m: PendingMember) => PendingMemberCourse | null;
 }
 
 function MemberDetail({ member, onApprove, onReject, formatDate, formatCPF, activeCourse }: MemberDetailProps) {
