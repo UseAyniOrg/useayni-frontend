@@ -27,6 +27,7 @@ import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   createMiscellaneous,
+  formatDateTime,
   getCreatorLevel,
   isNestingAllowed,
   listMiscellaneous,
@@ -41,6 +42,12 @@ import {
   MiscellaneousVisibility,
   type Miscellaneous,
 } from '@/services/miscellaneousService';
+import { MemberMultiSelector } from '@/components/miscellaneous/member-multi-selector';
+import type { MemberOption } from '@/services/memberService';
+
+// Limites de data: ano com no máximo 4 dígitos.
+const DATE_MIN = '1900-01-01T00:00';
+const DATE_MAX = '9999-12-31T23:59';
 
 const STEPS = ['Tipo', 'Informações', 'Visibilidade & Público', 'Donos & Membros', 'Revisão'];
 
@@ -53,8 +60,8 @@ interface FormState {
   visibility: MiscellaneousVisibility;
   scope: MiscellaneousScope;
   parentId: string;
-  ownerIdsRaw: string;
-  memberIdsRaw: string;
+  owners: MemberOption[];
+  members: MemberOption[];
   cep: string;
   bairro: string;
   rua: string;
@@ -73,8 +80,8 @@ const initialForm: FormState = {
   visibility: MiscellaneousVisibility.PUBLICO,
   scope: MiscellaneousScope.MEU_NIVEL,
   parentId: '',
-  ownerIdsRaw: '',
-  memberIdsRaw: '',
+  owners: [],
+  members: [],
   cep: '',
   bairro: '',
   rua: '',
@@ -84,11 +91,11 @@ const initialForm: FormState = {
   isDraft: false,
 };
 
-function parseIds(raw: string): string[] {
-  return raw
-    .split(/[\s,;]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
+/** Valida que o valor de data tem ano com no máximo 4 dígitos (1900-9999). */
+function isValidDate(value: string): boolean {
+  if (!value) return true;
+  const year = Number(value.slice(0, value.indexOf('-')));
+  return Number.isInteger(year) && year >= 1900 && year <= 9999;
 }
 
 export default function CreateMiscellaneous() {
@@ -127,10 +134,19 @@ export default function CreateMiscellaneous() {
 
   const titleError =
     form.title.length > 120 ? 'Título excede 120 caracteres' : null;
-  const dateError =
-    form.start_date && form.end_date && new Date(form.end_date) < new Date(form.start_date)
-      ? 'Data de término anterior à de início'
-      : null;
+  const dateError = (() => {
+    if (!isValidDate(form.start_date) || !isValidDate(form.end_date)) {
+      return 'Data inválida: o ano deve ter no máximo 4 dígitos';
+    }
+    if (
+      form.start_date &&
+      form.end_date &&
+      new Date(form.end_date) < new Date(form.start_date)
+    ) {
+      return 'Data de término anterior à de início';
+    }
+    return null;
+  })();
 
   const predictedStatus = useMemo(
     () =>
@@ -158,7 +174,7 @@ export default function CreateMiscellaneous() {
       case 3:
         return (
           form.scope !== MiscellaneousScope.SELECAO_INDIVIDUAL ||
-          parseIds(form.memberIdsRaw).length > 0
+          form.members.length > 0
         );
       default:
         return true;
@@ -179,8 +195,8 @@ export default function CreateMiscellaneous() {
         visibility: form.visibility,
         scope: form.scope,
         parentId: form.parentId || undefined,
-        ownerIds: parseIds(form.ownerIdsRaw),
-        memberIds: parseIds(form.memberIdsRaw),
+        ownerIds: form.owners.map(m => m.id),
+        memberIds: form.members.map(m => m.id),
         cep: form.cep || undefined,
         bairro: form.bairro || undefined,
         rua: form.rua || undefined,
@@ -247,7 +263,7 @@ export default function CreateMiscellaneous() {
                       <Input
                         id="title"
                         value={form.title}
-                        maxLength={140}
+                        maxLength={120}
                         onChange={e => set('title', e.target.value)}
                         placeholder="Ex.: Mutirão de arrecadação"
                       />
@@ -277,6 +293,8 @@ export default function CreateMiscellaneous() {
                         <Input
                           id="start"
                           type="datetime-local"
+                          min={DATE_MIN}
+                          max={DATE_MAX}
                           value={form.start_date}
                           onChange={e => set('start_date', e.target.value)}
                         />
@@ -288,6 +306,8 @@ export default function CreateMiscellaneous() {
                         <Input
                           id="end"
                           type="datetime-local"
+                          min={DATE_MIN}
+                          max={DATE_MAX}
                           value={form.end_date}
                           onChange={e => set('end_date', e.target.value)}
                         />
@@ -295,11 +315,9 @@ export default function CreateMiscellaneous() {
                     </div>
                     {dateError && <p className="text-xs text-destructive">{dateError}</p>}
 
-                    <details className="rounded-md border p-3">
-                      <summary className="cursor-pointer text-sm font-medium">
-                        Local (opcional)
-                      </summary>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-3 rounded-md border p-3">
+                      <p className="text-sm font-medium">Local (opcional)</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <Input placeholder="CEP" value={form.cep} onChange={e => set('cep', e.target.value)} />
                         <Input placeholder="Bairro" value={form.bairro} onChange={e => set('bairro', e.target.value)} />
                         <Input placeholder="Rua" value={form.rua} onChange={e => set('rua', e.target.value)} />
@@ -307,7 +325,7 @@ export default function CreateMiscellaneous() {
                         <Input placeholder="Cidade" value={form.cidade} onChange={e => set('cidade', e.target.value)} />
                         <Input placeholder="Estado" value={form.estado} onChange={e => set('estado', e.target.value)} />
                       </div>
-                    </details>
+                    </div>
                   </div>
                 )}
 
@@ -380,14 +398,12 @@ export default function CreateMiscellaneous() {
                 {step === 3 && (
                   <div className="space-y-4">
                     <div className="space-y-1">
-                      <Label htmlFor="owners">Donos adicionais (opcional)</Label>
-                      <textarea
-                        id="owners"
-                        value={form.ownerIdsRaw}
-                        onChange={e => set('ownerIdsRaw', e.target.value)}
-                        rows={2}
-                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        placeholder="IDs de membros separados por vírgula"
+                      <Label>Donos adicionais (opcional)</Label>
+                      <MemberMultiSelector
+                        selected={form.owners}
+                        onChange={v => set('owners', v)}
+                        triggerText="Adicionar donos"
+                        excludeIds={user?.id ? [user.id] : []}
                       />
                       <p className="text-xs text-muted-foreground">
                         Você (criador) já será o dono principal.
@@ -395,19 +411,17 @@ export default function CreateMiscellaneous() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label htmlFor="members">
+                      <Label>
                         Membros iniciais{' '}
                         {form.scope === MiscellaneousScope.SELECAO_INDIVIDUAL
                           ? '* (convidados)'
                           : '(opcional)'}
                       </Label>
-                      <textarea
-                        id="members"
-                        value={form.memberIdsRaw}
-                        onChange={e => set('memberIdsRaw', e.target.value)}
-                        rows={2}
-                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        placeholder="IDs de membros separados por vírgula"
+                      <MemberMultiSelector
+                        selected={form.members}
+                        onChange={v => set('members', v)}
+                        triggerText="Adicionar membros"
+                        excludeIds={user?.id ? [user.id] : []}
                       />
                       {form.scope === MiscellaneousScope.SELECAO_INDIVIDUAL && (
                         <p className="text-xs text-muted-foreground">
@@ -428,8 +442,8 @@ export default function CreateMiscellaneous() {
                     <CardContent className="space-y-2 text-sm">
                       <Row label="Tipo" value={form.type ? TYPE_LABELS[form.type] : '-'} />
                       <Row label="Título" value={form.title} />
-                      <Row label="Início" value={form.start_date || '-'} />
-                      <Row label="Término" value={form.end_date || '—'} />
+                      <Row label="Início" value={formatDateTime(form.start_date)} />
+                      <Row label="Término" value={formatDateTime(form.end_date)} />
                       <Row
                         label="Visibilidade"
                         value={form.visibility === MiscellaneousVisibility.PUBLICO ? 'Público' : 'Privado'}
@@ -440,6 +454,20 @@ export default function CreateMiscellaneous() {
                         value={
                           form.parentId
                             ? parents.find(p => p.id === form.parentId)?.title ?? form.parentId
+                            : '—'
+                        }
+                      />
+                      <Row
+                        label="Donos"
+                        value={
+                          ['Você (criador)', ...form.owners.map(m => m.name)].join(', ')
+                        }
+                      />
+                      <Row
+                        label="Membros"
+                        value={
+                          form.members.length > 0
+                            ? form.members.map(m => m.name).join(', ')
                             : '—'
                         }
                       />

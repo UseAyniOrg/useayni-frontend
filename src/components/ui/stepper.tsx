@@ -12,7 +12,7 @@ export function Stepper({ steps, currentStep }: StepperProps) {
         <div key={index} className="flex items-center">
           <div
             className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+              "w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-medium",
               index <= currentStep
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
@@ -20,13 +20,13 @@ export function Stepper({ steps, currentStep }: StepperProps) {
           >
             {index + 1}
           </div>
-          <div className="ml-2 text-sm font-medium hidden sm:block">
+          <div className="ml-2 min-w-0 text-sm font-medium leading-tight hidden sm:block">
             {step}
           </div>
           {index < steps.length - 1 && (
             <div
               className={cn(
-                "w-12 h-0.5 mx-4",
+                "w-12 h-0.5 mx-4 shrink-0",
                 index < currentStep ? "bg-primary" : "bg-muted"
               )}
             />

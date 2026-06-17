@@ -178,6 +178,21 @@ export async function createMiscellaneous(payload: CreateMiscellaneousPayload) {
 }
 
 export async function listMiscellaneous() {
-  const { data } = await api.get<Miscellaneous[]>('/miscellaneous');
-  return data;
+  const { data } = await api.get<Miscellaneous[] | { data: Miscellaneous[] }>('/miscellaneous');
+  // Compatível com resposta paginada ({ data, total, ... }) ou lista crua.
+  return Array.isArray(data) ? data : data.data;
+}
+
+/** Formata um valor de data (ISO ou datetime-local) para pt-BR: dd/mm/aaaa hh:mm. */
+export function formatDateTime(value?: string | null): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

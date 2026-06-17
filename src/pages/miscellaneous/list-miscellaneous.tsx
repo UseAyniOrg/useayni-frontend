@@ -39,9 +39,11 @@ export default function ListMiscellaneous() {
           <div className="mx-auto max-w-3xl space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Públicas e ativas</h2>
-              <Button onClick={() => navigate('/miscelaneas/nova')}>
-                <Plus className="h-4 w-4" /> Nova Miscelânea
-              </Button>
+              {items !== null && items.length > 0 && (
+                <Button onClick={() => navigate('/miscelaneas/nova')}>
+                  <Plus className="h-4 w-4" /> Nova Miscelânea
+                </Button>
+              )}
             </div>
 
             {items === null ? (
