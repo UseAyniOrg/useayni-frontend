@@ -23,6 +23,8 @@ import {
   CheckSquare,
   Settings,
   ChevronRight,
+  LayoutGrid,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AccountSwitcher } from './AccountSwitcher';
@@ -88,6 +90,20 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
                 <SidebarMenuButton tooltip="Chats">
                   <MessageSquare className="h-4 w-4" />
                   <span>Chats</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Miscelâneas" onClick={() => navigate('/miscelaneas')}>
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>Miscelâneas</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Aprovações" onClick={() => navigate('/aprovacoes')}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  <span>Aprovações</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

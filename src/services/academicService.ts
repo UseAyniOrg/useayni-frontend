@@ -32,6 +32,22 @@ export interface CourseOption {
   courseUniversities?: CourseUniversityOption[];
 }
 
+export interface CaeOption {
+  id: string;
+  name: string;
+  state?: {
+    id: string;
+    name: string;
+    uf: string;
+  } | null;
+}
+
+export interface CarOption {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
 export const academicService = {
   async getStates() {
     const response = await api.get<StateOption[]>('/states');
@@ -41,6 +57,13 @@ export const academicService = {
   async getCitiesByState(stateId: string) {
     const response = await api.get<CityOption[]>('/cities', {
       params: { stateId },
+    });
+    return response.data;
+  },
+
+  async getCities(params?: { stateId?: string; stateUf?: string }) {
+    const response = await api.get<CityOption[]>('/cities', {
+      params,
     });
     return response.data;
   },
@@ -61,6 +84,16 @@ export const academicService = {
     const response = await api.get<CourseOption[]>('/courses', {
       params: { universityId, cityId },
     });
+    return response.data;
+  },
+
+  async getCaeOptions() {
+    const response = await api.get<CaeOption[]>('/caes');
+    return response.data;
+  },
+
+  async getCarOptions() {
+    const response = await api.get<CarOption[]>('/cars');
     return response.data;
   },
 };

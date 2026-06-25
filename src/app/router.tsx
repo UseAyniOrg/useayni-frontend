@@ -4,6 +4,12 @@ import Credentials from "../pages/credencials/credencials.tsx";
 import Home from "../pages/home/home.tsx";
 import { ProtectedRoute } from "../components/ProtectedRoute.tsx";
 import MemberProfile from "@/pages/member-profile/member-profile.tsx";
+import MiscellaneousListPage from "@/pages/miscellaneous/list.tsx";
+import MiscellaneousCreatePage from "@/pages/miscellaneous/create.tsx";
+import MiscellaneousDetailPage from "@/pages/miscellaneous/detail.tsx";
+import MiscellaneousEditPage from "@/pages/miscellaneous/edit.tsx";
+import MiscellaneousFormBuilderPage from "@/pages/miscellaneous/form-builder.tsx";
+import ApprovalsPage from "@/pages/approvals/list.tsx";
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +41,54 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MemberProfile />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas",
+    element: (
+      <ProtectedRoute>
+        <MiscellaneousListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas/nova",
+    element: (
+      <ProtectedRoute>
+        <MiscellaneousCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas/:id",
+    element: (
+      <ProtectedRoute>
+        <MiscellaneousDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas/:id/editar",
+    element: (
+      <ProtectedRoute>
+        <MiscellaneousEditPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/miscelaneas/:id/formulario",
+    element: (
+      <ProtectedRoute>
+        <MiscellaneousFormBuilderPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/aprovacoes",
+    element: (
+      <ProtectedRoute>
+        <ApprovalsPage />
       </ProtectedRoute>
     ),
   },
