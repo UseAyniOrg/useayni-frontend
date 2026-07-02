@@ -34,7 +34,7 @@ export default function MemberList() {
     setError('');
     try {
       const response = await api.get<Member[]>('/members');
-      const approved = response.data.filter(m => m.registration_status === 'APPROVED');
+      const approved = response.data.filter(m => m.registration_status === 'approved');
       setMembers(approved);
     } catch {
       setError('Não foi possível carregar os membros. Tente novamente.');

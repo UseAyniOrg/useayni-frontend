@@ -10,7 +10,7 @@ export interface PendingMember {
   ra: string;
   birth_date: string;
   admission_date: string;
-  registration_status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  registration_status: 'approved' | 'pending' | 'rejected';
   city?: { id: string; name: string };
   memberCourses?: Array<{
     status: string;

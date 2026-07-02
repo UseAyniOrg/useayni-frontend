@@ -9,7 +9,7 @@ export interface Member {
   phone?: string;
   ra: string;
   profile_picture_url?: string;
-  registration_status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  registration_status: 'approved' | 'pending' | 'rejected';
   city?: { id: string; name: string };
   memberCourses?: Array<{
     status: string;
