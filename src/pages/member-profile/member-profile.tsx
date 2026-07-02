@@ -1,139 +1,149 @@
-import { useParams } from "react-router-dom";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { AppHeader } from "@/components/layout/AppHeader";
-import { useRolesAndPermissions } from "@/hooks/useRolesAndPermissions";
-import { useMemberProfile } from "@/hooks/useMemberProfile";
+import { useMemo, type ReactNode } from 'react';
+import { useParams } from 'react-router-dom';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/layout/AppSidebar';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
+import { useMemberProfile } from '@/hooks/useMemberProfile';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { ProfileHeader } from './components/ProfileHeader';
+import { ProfileSkills } from './components/ProfileSkills';
+import { ProfileGoals } from './components/ProfileGoals';
+import { ProfileMetrics } from './components/ProfileMetrics';
+import { ProfileProjects } from './components/ProfileProjects';
+import { ProfileEngagement } from './components/ProfileEngagement';
+import { ProfileTasks } from './components/ProfileTasks';
+import { ProfileMentorship } from './components/ProfileMentorship';
+import { ProfileRecommendations } from './components/ProfileRecommendations';
+import { useProfilePersona } from './hooks/useProfilePersona';
+import { mapProfileToViewModel } from './map-profile-view-model';
 
+function ProfilePageLayout({ children }: { children: ReactNode }) {
+  const { data: rolesAndPermissions, isLoading } = useRolesAndPermissions();
+
+  return (
+    <SidebarProvider>
+      <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={isLoading} />
+      <SidebarInset>{children}</SidebarInset>
+    </SidebarProvider>
+  );
+}
 
 export default function MemberProfile() {
   const { memberSlugName } = useParams<{ memberSlugName: string }>();
-  const { data: rolesAndPermissions, isLoading: loadingRoles } = useRolesAndPermissions();
-  const { profile, isLoading: loadingProfile, error } = useMemberProfile(memberSlugName);
+  const { user } = useAuthContext();
+  const { profile, enrichment, isLoading: loadingProfile, error } = useMemberProfile(
+    memberSlugName,
+    user?.id
+  );
+  const persona = useProfilePersona(profile?.id);
+
+  const viewModel = useMemo(() => {
+    if (!profile || !memberSlugName) return null;
+    return mapProfileToViewModel(profile, {
+      slug: memberSlugName,
+      enrichment,
+      viewerEmail: user?.email,
+      viewerId: user?.id,
+    });
+  }, [profile, memberSlugName, enrichment, user?.email, user?.id]);
 
   if (error) {
     return (
-      <SidebarProvider>
-        <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={loadingRoles} />
-        <SidebarInset>
-          <AppHeader title="Perfil do Membro" />
-          <main className="flex-1 overflow-auto p-4">
-            <div className="text-red-500">Erro ao carregar perfil: {error.message}</div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <ProfilePageLayout>
+        <AppHeader title="Perfil do Membro" />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="mx-auto max-w-5xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+            {error.message}
+          </div>
+        </main>
+      </ProfilePageLayout>
     );
   }
 
   if (loadingProfile) {
     return (
-      <SidebarProvider>
-        <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={loadingRoles} />
-        <SidebarInset>
-          <AppHeader title="Perfil do Membro" />
-          <main className="flex-1 overflow-auto p-4">
-            <div>Carregando perfil...</div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <ProfilePageLayout>
+        <AppHeader title="Perfil do Membro" />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="text-muted-foreground">Carregando perfil...</div>
+        </main>
+      </ProfilePageLayout>
     );
   }
 
-  if (!profile) {
+  if (!viewModel) {
     return (
-      <SidebarProvider>
-        <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={loadingRoles} />
-        <SidebarInset>
-          <AppHeader title="Perfil do Membro" />
-          <main className="flex-1 overflow-auto p-4">
-            <div>Membro não encontrado</div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <ProfilePageLayout>
+        <AppHeader title="Perfil do Membro" />
+        <main className="flex-1 overflow-auto p-4">
+          <div>Membro não encontrado</div>
+        </main>
+      </ProfilePageLayout>
     );
   }
+
+  const hasSkills = viewModel.skills.length > 0;
+  const hasGoals = viewModel.goals.length > 0;
+  const hasMetrics = viewModel.metrics.some((metric) => metric.value > 0);
+  const hasProjects = viewModel.projects.length > 0;
+  const hasEngagement =
+    viewModel.meetingAttendanceRate > 0 || viewModel.events.length > 0;
+  const hasTasks =
+    viewModel.taskSummary.completed > 0 || viewModel.taskSummary.inProgress > 0;
+  const hasMentorship = Boolean(viewModel.mentorship.sponsor);
+  const hasRecommendations = viewModel.recommendations.length > 0;
 
   return (
-    <SidebarProvider>
-      <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={loadingRoles} />
-      <SidebarInset>
-        <AppHeader title={`Perfil - ${profile.name}`} />
-        <main className="flex-1 overflow-auto p-4">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">{profile.name}</h2>
-              <p className="text-muted-foreground">RA: {profile.ra}</p>
+    <ProfilePageLayout>
+      <AppHeader title={`Perfil - ${viewModel.name}`} />
+      <main className="flex-1 overflow-auto bg-[#fafafa] p-4 md:p-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+          <ProfileHeader profile={viewModel} persona={persona} />
+
+          {(hasSkills || hasGoals) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              {hasSkills ? (
+                <div className="lg:col-span-5">
+                  <ProfileSkills profile={viewModel} persona={persona} />
+                </div>
+              ) : null}
+              {hasGoals ? (
+                <div className={hasSkills ? 'lg:col-span-7' : 'lg:col-span-12'}>
+                  <ProfileGoals profile={viewModel} />
+                </div>
+              ) : null}
             </div>
+          )}
 
-            {profile.biography && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Sobre</h3>
-                <p className="text-muted-foreground">{profile.biography}</p>
-              </div>
-            )}
+          {hasMetrics ? <ProfileMetrics profile={viewModel} /> : null}
+          {hasProjects ? <ProfileProjects profile={viewModel} /> : null}
 
-            <div className="grid md:grid-cols-2 gap-4">
-              {profile.course && (
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-semibold mb-1">Curso</h3>
-                  <p className="text-sm text-muted-foreground">{profile.course.name}</p>
-                </div>
-              )}
-
-              {profile.university && (
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-semibold mb-1">Universidade</h3>
-                  <p className="text-sm text-muted-foreground">{profile.university.name}</p>
-                </div>
-              )}
-
-              {profile.city && (
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-semibold mb-1">Cidade</h3>
-                  <p className="text-sm text-muted-foreground">{profile.city.name}</p>
-                </div>
-              )}
-
-              {profile.phone && (
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-semibold mb-1">Telefone</h3>
-                  <p className="text-sm text-muted-foreground">{profile.phone}</p>
-                </div>
-              )}
+          {(hasEngagement || hasTasks) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {hasEngagement ? (
+                <ProfileEngagement profile={viewModel} persona={persona} />
+              ) : null}
+              {hasTasks ? <ProfileTasks profile={viewModel} persona={persona} /> : null}
             </div>
+          )}
 
-            {profile.sponsor && (
-              <div className="bg-muted rounded-lg p-4">
-                <h3 className="font-semibold mb-2">Padrinho/Madrinha</h3>
-                <p className="text-sm text-muted-foreground">{profile.sponsor.name}</p>
-              </div>
-            )}
-
-            {profile.roles && profile.roles.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Cargos</h3>
-                <div className="space-y-2">
-                  {profile.roles.map((role) => (
-                    <div key={role.id} className="bg-muted rounded-lg p-3">
-                      <p className="font-medium">{role.name}</p>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
-                    </div>
-                  ))}
+          {(hasMentorship || hasRecommendations) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {hasMentorship ? (
+                <div className="lg:col-span-1">
+                  <ProfileMentorship profile={viewModel} />
                 </div>
-              </div>
-            )}
-
-            {profile.linkedin_url && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Redes Sociais</h3>
-                <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  LinkedIn
-                </a>
-              </div>
-            )}
-          </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+              ) : null}
+              {hasRecommendations ? (
+                <div className={hasMentorship ? 'lg:col-span-2' : 'lg:col-span-3'}>
+                  <ProfileRecommendations profile={viewModel} persona={persona} />
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </main>
+    </ProfilePageLayout>
   );
 }
