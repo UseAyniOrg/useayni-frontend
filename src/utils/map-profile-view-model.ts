@@ -1,7 +1,7 @@
 import type { MemberProfileData, MemberProfileEnrichment } from '@/hooks/useMemberProfile';
-import { formatTenure, isVeteranMember } from './utils';
-import { P1_DEFAULTS } from './data/p1-profile-supplements';
-import type { MemberProfileViewModel, MemberStatus } from './types';
+import { formatTenure, isVeteranMember } from './profile';
+import { P1_DEFAULTS } from '../pages/member-profile/data/p1-profile-supplements';
+import type { MemberProfileViewModel, MemberStatus } from '../types/profile';
 
 interface MapProfileOptions {
   slug: string;

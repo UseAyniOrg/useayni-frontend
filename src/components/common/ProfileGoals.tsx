@@ -1,6 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import type { MemberProfileViewModel } from '../types';
+import type { MemberProfileViewModel } from '@/types/profile';
 import { ProfileLinkButton, ProfileSectionCard, SkillChip } from './profile-ui';
 
 interface ProfileGoalsProps {
@@ -8,8 +8,8 @@ interface ProfileGoalsProps {
 }
 
 export function ProfileGoals({ profile }: ProfileGoalsProps) {
-  const achievements = profile.goals.filter((goal) => goal.type === 'achievement');
-  const inProgress = profile.goals.filter((goal) => goal.type === 'in_progress');
+  const achievements = profile.goals.filter(goal => goal.type === 'achievement');
+  const inProgress = profile.goals.filter(goal => goal.type === 'in_progress');
 
   return (
     <ProfileSectionCard
@@ -22,7 +22,7 @@ export function ProfileGoals({ profile }: ProfileGoalsProps) {
             Conquistas
           </p>
           <div className="flex flex-wrap gap-2">
-            {achievements.map((goal) => (
+            {achievements.map(goal => (
               <SkillChip key={goal.id} label={goal.name} />
             ))}
           </div>
@@ -33,7 +33,7 @@ export function ProfileGoals({ profile }: ProfileGoalsProps) {
             Em progresso
           </p>
           <div className="space-y-4">
-            {inProgress.map((goal) => (
+            {inProgress.map(goal => (
               <div key={goal.id} className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">

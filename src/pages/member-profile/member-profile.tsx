@@ -6,17 +6,17 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { useMemberProfile } from '@/hooks/useMemberProfile';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ProfileHeader } from './components/ProfileHeader';
-import { ProfileSkills } from './components/ProfileSkills';
-import { ProfileGoals } from './components/ProfileGoals';
-import { ProfileMetrics } from './components/ProfileMetrics';
-import { ProfileProjects } from './components/ProfileProjects';
-import { ProfileEngagement } from './components/ProfileEngagement';
-import { ProfileTasks } from './components/ProfileTasks';
-import { ProfileMentorship } from './components/ProfileMentorship';
-import { ProfileRecommendations } from './components/ProfileRecommendations';
-import { useProfilePersona } from './hooks/useProfilePersona';
-import { mapProfileToViewModel } from './map-profile-view-model';
+import { ProfileHeader } from '@/components/common/ProfileHeader';
+import { ProfileSkills } from '@/components/common/ProfileSkills';
+import { ProfileGoals } from '@/components/common/ProfileGoals';
+import { ProfileMetrics } from '@/components/common/ProfileMetrics';
+import { ProfileProjects } from '@/components/common/ProfileProjects';
+import { ProfileEngagement } from '@/components/common/ProfileEngagement';
+import { ProfileTasks } from '@/components/common/ProfileTasks';
+import { ProfileMentorship } from '@/components/common/ProfileMentorship';
+import { ProfileRecommendations } from '@/components/common/ProfileRecommendations';
+import { useProfilePersona } from '../../hooks/useProfilePersona';
+import { mapProfileToViewModel } from '../../utils/map-profile-view-model';
 
 function ProfilePageLayout({ children }: { children: ReactNode }) {
   const { data: rolesAndPermissions, isLoading } = useRolesAndPermissions();
@@ -32,10 +32,12 @@ function ProfilePageLayout({ children }: { children: ReactNode }) {
 export default function MemberProfile() {
   const { memberSlugName } = useParams<{ memberSlugName: string }>();
   const { user } = useAuthContext();
-  const { profile, enrichment, isLoading: loadingProfile, error } = useMemberProfile(
-    memberSlugName,
-    user?.id
-  );
+  const {
+    profile,
+    enrichment,
+    isLoading: loadingProfile,
+    error,
+  } = useMemberProfile(memberSlugName, user?.id);
   const persona = useProfilePersona(profile?.id);
 
   const viewModel = useMemo(() => {
@@ -85,12 +87,10 @@ export default function MemberProfile() {
 
   const hasSkills = viewModel.skills.length > 0;
   const hasGoals = viewModel.goals.length > 0;
-  const hasMetrics = viewModel.metrics.some((metric) => metric.value > 0);
+  const hasMetrics = viewModel.metrics.some(metric => metric.value > 0);
   const hasProjects = viewModel.projects.length > 0;
-  const hasEngagement =
-    viewModel.meetingAttendanceRate > 0 || viewModel.events.length > 0;
-  const hasTasks =
-    viewModel.taskSummary.completed > 0 || viewModel.taskSummary.inProgress > 0;
+  const hasEngagement = viewModel.meetingAttendanceRate > 0 || viewModel.events.length > 0;
+  const hasTasks = viewModel.taskSummary.completed > 0 || viewModel.taskSummary.inProgress > 0;
   const hasMentorship = Boolean(viewModel.mentorship.sponsor);
   const hasRecommendations = viewModel.recommendations.length > 0;
 
@@ -121,9 +121,7 @@ export default function MemberProfile() {
 
           {(hasEngagement || hasTasks) && (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {hasEngagement ? (
-                <ProfileEngagement profile={viewModel} persona={persona} />
-              ) : null}
+              {hasEngagement ? <ProfileEngagement profile={viewModel} persona={persona} /> : null}
               {hasTasks ? <ProfileTasks profile={viewModel} persona={persona} /> : null}
             </div>
           )}

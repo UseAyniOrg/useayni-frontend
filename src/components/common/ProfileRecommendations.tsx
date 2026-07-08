@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { MemberProfileViewModel, ProfilePersona } from '../types';
-import { getInitials } from '../utils';
+import type { MemberProfileViewModel, ProfilePersona } from '@/types/profile';
+import { getInitials } from '@/utils/profile';
 import { ProfileLinkButton, ProfileSectionCard } from './profile-ui';
 
 interface ProfileRecommendationsProps {

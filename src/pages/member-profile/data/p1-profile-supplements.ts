@@ -5,7 +5,7 @@ import type {
   ProfileProject,
   ProfileRecommendation,
   ProfileSkill,
-} from '../types';
+} from '../../../types/profile';
 
 /** Dados complementares até os endpoints dedicados estarem disponíveis no backend. */
 export const P1_PROFILE_SKILLS: ProfileSkill[] = [

@@ -1,5 +1,5 @@
 import { useAuthContext } from '@/contexts/AuthContext';
-import type { ProfilePersona } from '../types';
+import type { ProfilePersona } from '../types/profile';
 
 export function useProfilePersona(profileMemberId: string | undefined): ProfilePersona {
   const { user, isTechTeam } = useAuthContext();

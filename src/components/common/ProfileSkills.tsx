@@ -6,9 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { MemberProfileViewModel, ProfilePersona } from '../types';
-import { groupSkillsByCategory } from '../utils';
-import { getAllSkills } from '../map-profile-view-model';
+import type { MemberProfileViewModel, ProfilePersona } from '@/types/profile';
+import { groupSkillsByCategory } from '@/utils/profile';
+import { getAllSkills } from '@/utils/map-profile-view-model';
 import {
   ProfileLinkButton,
   ProfileSectionCard,

@@ -1,5 +1,5 @@
 import { CheckCircle2, Hourglass } from 'lucide-react';
-import type { MemberProfileViewModel, ProfilePersona } from '../types';
+import type { MemberProfileViewModel, ProfilePersona } from '@/types/profile';
 import { ProfileLinkButton, ProfileSectionCard } from './profile-ui';
 
 interface ProfileTasksProps {

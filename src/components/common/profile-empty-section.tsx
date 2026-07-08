@@ -1,4 +1,4 @@
-import { ProfileSectionCard } from './profile-ui';
+import { ProfileSectionCard } from "./profile-ui";
 
 interface ProfileEmptySectionProps {
   title: string;

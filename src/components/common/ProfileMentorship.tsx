@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { MemberProfileViewModel } from '../types';
-import { getInitials } from '../utils';
+import type { MemberProfileViewModel } from '@/types/profile';
+import { getInitials } from '@/utils/profile';
 import { ProfileLinkButton, ProfileSectionCard } from './profile-ui';
 
 interface ProfileMentorshipProps {
@@ -11,10 +11,7 @@ export function ProfileMentorship({ profile }: ProfileMentorshipProps) {
   const { sponsor, menteesCount } = profile.mentorship;
 
   return (
-    <ProfileSectionCard
-      title="Mentoria"
-      footer={<ProfileLinkButton>Ver lista</ProfileLinkButton>}
-    >
+    <ProfileSectionCard title="Mentoria" footer={<ProfileLinkButton>Ver lista</ProfileLinkButton>}>
       <div className="space-y-5">
         {sponsor ? (
           <div>

@@ -1,11 +1,5 @@
-import {
-  CalendarDays,
-  CheckCircle2,
-  FolderKanban,
-  Target,
-  Users,
-} from 'lucide-react';
-import type { MemberProfileViewModel, ProfileMetric } from '../types';
+import { CalendarDays, CheckCircle2, FolderKanban, Target, Users } from 'lucide-react';
+import type { MemberProfileViewModel, ProfileMetric } from '@/types/profile';
 import { ProfileSectionCard } from './profile-ui';
 
 interface ProfileMetricsProps {
@@ -34,7 +28,7 @@ export function ProfileMetrics({ profile }: ProfileMetricsProps) {
   return (
     <ProfileSectionCard title="Trajetória">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        {profile.metrics.map((metric) => (
+        {profile.metrics.map(metric => (
           <div
             key={metric.id}
             className="flex flex-col items-center rounded-2xl bg-[#f8faff] px-3 py-4 text-center"

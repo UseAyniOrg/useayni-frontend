@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { MemberProfileViewModel } from '../types';
+import type { MemberProfileViewModel } from '@/types/profile';
 import { ProfileLinkButton, ProfileSectionCard } from './profile-ui';
 
 interface ProfileProjectsProps {
