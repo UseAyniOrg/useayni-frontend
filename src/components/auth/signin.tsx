@@ -11,14 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import FormField from '../common/FormField';
-
-const loginFormSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(1, 'Senha obrigatória'),
-  rememberMe: z.boolean(),
-});
-type LoginFormData = z.infer<typeof loginFormSchema>;
+import FormField from '../common/formField';
+import { loginFormSchema, type LoginFormData } from '@/schemas/signIn';
 
 export default function SignIn() {
   const {
@@ -191,6 +185,7 @@ export default function SignIn() {
             </div>
             <div>
               <button
+                type="button"
                 className="text-primary hover:underline font-medium text-sm"
                 onClick={() => navigate('/recuperar-senha')}
               >
