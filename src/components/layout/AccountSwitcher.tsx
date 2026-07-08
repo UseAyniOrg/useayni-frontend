@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useCurrentMember } from '@/hooks/useCurrentMember';
 
 interface MemberPosition {
   type: 'REPRESENTANTE' | 'DIRIGENTE' | 'CAR' | 'CAE';
@@ -33,105 +34,95 @@ interface AccountSwitcherProps {
   isLoading: boolean;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  MEMBRO: 'Membro',
+  LIDER: 'Líder',
+  DIRIGENTE: 'Dirigente',
+  CA: 'CA',
+  EQUIPE_TECNICA: 'Equipe Técnica',
+  ESTADUAL: 'Estadual',
+  CAR: 'CAR',
+  EXTERNO: 'Externo',
+};
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(n => n[0].toUpperCase())
+    .join('');
+}
+
 export function AccountSwitcher({ rolesAndPermissions, isLoading }: AccountSwitcherProps) {
   const { isMobile } = useSidebar();
+  const { member } = useCurrentMember();
   const [cargoAtivo, setCargoAtivo] = useState<string>('');
 
+  const roles = rolesAndPermissions?.roles ?? [];
+  const positions = rolesAndPermissions?.positions ?? [];
+  const memberName = member?.name || rolesAndPermissions?.memberName || '';
+  const avatar = member?.profile_picture_url ?? '';
+  const initials = memberName ? getInitials(memberName) : '?';
+
+  const allOptions = [
+    ...roles.map(r => ({ key: r, label: ROLE_LABELS[r] ?? r })),
+    ...positions.map(p => ({ key: `${p.type}-${p.id}`, label: `${ROLE_LABELS[p.type] ?? p.type} — ${p.name}` })),
+  ];
+
   useEffect(() => {
-    if (rolesAndPermissions?.roles && rolesAndPermissions.roles.length > 0) {
-      setCargoAtivo(rolesAndPermissions.roles[0]);
-    } else if (rolesAndPermissions?.positions && rolesAndPermissions.positions.length > 0) {
-      const firstPosition = rolesAndPermissions.positions[0];
-      setCargoAtivo(`${firstPosition.type} - ${firstPosition.name}`);
+    if (allOptions.length > 0 && !cargoAtivo) {
+      setCargoAtivo(allOptions[0].label);
     }
   }, [rolesAndPermissions]);
 
-  const user = {
-    name: rolesAndPermissions?.memberName || 'Usuário',
-    email: '',
-    avatar: '',
-  };
+  const displayLabel = isLoading ? '' : (cargoAtivo || allOptions[0]?.label || 'Membro');
+  const canSwitch = !isLoading && allOptions.length > 1;
 
-  const roles = rolesAndPermissions?.roles || [];
-  const positions = rolesAndPermissions?.positions || [];
+  const inner = (
+    <SidebarMenuButton
+      size="lg"
+      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+    >
+      <Avatar className="h-8 w-8 shrink-0">
+        <AvatarImage src={avatar} alt={memberName} />
+        <AvatarFallback className="text-xs font-medium">{initials}</AvatarFallback>
+      </Avatar>
+      <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+        <span className="truncate font-semibold">{memberName.split(' ')[0] || '—'}</span>
+        <span className="truncate text-xs text-muted-foreground">{displayLabel}</span>
+      </div>
+      {canSwitch && <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />}
+    </SidebarMenuButton>
+  );
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+        {canSwitch ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>{inner}</DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              align="start"
+              side={isMobile ? 'bottom' : 'right'}
+              sideOffset={4}
             >
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>
-                  {cargoAtivo
-                    .split(' ')
-                    .map(n => n[0])
-                    .join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold">{user.name.split(' ')[0]}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {cargoAtivo || 'Carregando...'}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            align="start"
-            side={isMobile ? 'bottom' : 'right'}
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="text-muted-foreground text-xs">Cargos</DropdownMenuLabel>
-            {isLoading ? (
-              <DropdownMenuItem disabled>Carregando cargos...</DropdownMenuItem>
-            ) : roles.length > 0 ? (
-              roles.map(role => (
+              <DropdownMenuLabel className="text-muted-foreground text-xs">Cargos</DropdownMenuLabel>
+              {allOptions.map(opt => (
                 <DropdownMenuItem
-                  key={role}
-                  onClick={() => setCargoAtivo(role)}
+                  key={opt.key}
+                  onClick={() => setCargoAtivo(opt.label)}
                   className="gap-2 p-2"
                 >
-                  {role}
+                  {opt.label}
                 </DropdownMenuItem>
-              ))
-            ) : positions.length > 0 ? (
-              positions.map(position => (
-                <DropdownMenuItem
-                  key={position.id}
-                  onClick={() => setCargoAtivo(`${position.type} - ${position.name}`)}
-                  className="gap-2 p-2"
-                >
-                  {position.type} - {position.name}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled>Nenhum cargo disponível</DropdownMenuItem>
-            )}
-            {roles.length > 0 && positions.length > 0 && (
-              <>
-                <DropdownMenuLabel className="text-muted-foreground text-xs mt-2">
-                  Posições
-                </DropdownMenuLabel>
-                {positions.map(position => (
-                  <DropdownMenuItem
-                    key={position.id}
-                    onClick={() => setCargoAtivo(`${position.type} - ${position.name}`)}
-                    className="gap-2 p-2"
-                  >
-                    {position.type} - {position.name}
-                  </DropdownMenuItem>
-                ))}
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          inner
+        )}
       </SidebarMenuItem>
     </SidebarMenu>
   );

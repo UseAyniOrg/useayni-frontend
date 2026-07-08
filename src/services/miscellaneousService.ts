@@ -194,6 +194,11 @@ export const miscellaneousService = {
     return res.data;
   },
 
+  async joinMiscellaneous(id: string) {
+    const res = await api.post(`/miscellaneous/${id}/join`);
+    return res.data;
+  },
+
   async getWaitlist(id: string) {
     const res = await api.get(`/miscellaneous/${id}/waitlist`);
     return res.data;

@@ -23,23 +23,12 @@ interface MemberProfileData {
   instagram_url?: string;
   linkedin_url?: string;
   github_url?: string;
-  course?: {
-    id: string;
-    name: string;
-  };
-  city?: {
-    id: string;
-    name: string;
-  };
-  university?: {
-    id: string;
-    name: string;
-  };
-  sponsor?: {
-    id: string;
-    name: string;
-  };
+  course?: { id: string; name: string };
+  city?: { id: string; name: string };
+  university?: { id: string; name: string };
+  sponsor?: { id: string; name: string; profile_picture_url?: string };
   roles?: Role[];
+  [key: string]: unknown;
 }
 
 interface UseMemberProfileReturn {

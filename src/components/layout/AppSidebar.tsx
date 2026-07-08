@@ -25,12 +25,14 @@ import {
   ChevronRight,
   LayoutGrid,
   ClipboardCheck,
+  UserCog,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AccountSwitcher } from './AccountSwitcher';
 import { NavUser } from './NavUser';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
 import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface MemberPosition {
   type: 'REPRESENTANTE' | 'DIRIGENTE' | 'CAR' | 'CAE';
@@ -57,6 +59,8 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
   const [tarefasOpen, setTarefasOpen] = useState(false);
 
   const navigate = useNavigate();
+  const { user: authUser } = useAuthContext();
+  const isMemberOnly = authUser?.roles.length === 1 && authUser.roles[0] === 'MEMBRO';
 
   // Fetch current member data
   const { member } = useCurrentMember();
@@ -100,12 +104,23 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Aprovações" onClick={() => navigate('/aprovacoes')}>
-                  <ClipboardCheck className="h-4 w-4" />
-                  <span>Aprovações</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {!isMemberOnly && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Aprovações" onClick={() => navigate('/aprovacoes')}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Aprovações</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {authUser?.roles.includes('EQUIPE_TECNICA') && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Gestão de Membros" onClick={() => navigate('/gestao-membros')}>
+                    <UserCog className="h-4 w-4" />
+                    <span>Gestão de Membros</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               <Collapsible
                 open={comunidadesOpen}

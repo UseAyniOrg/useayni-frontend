@@ -10,6 +10,7 @@ import MiscellaneousDetailPage from "@/pages/miscellaneous/detail.tsx";
 import MiscellaneousEditPage from "@/pages/miscellaneous/edit.tsx";
 import MiscellaneousFormBuilderPage from "@/pages/miscellaneous/form-builder.tsx";
 import ApprovalsPage from "@/pages/approvals/list.tsx";
+import MembersManagementPage from "@/pages/members/management.tsx";
 
 export const router = createBrowserRouter([
   {
@@ -89,6 +90,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ApprovalsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/gestao-membros",
+    element: (
+      <ProtectedRoute>
+        <MembersManagementPage />
       </ProtectedRoute>
     ),
   },

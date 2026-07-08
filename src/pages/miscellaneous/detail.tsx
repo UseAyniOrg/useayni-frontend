@@ -29,9 +29,14 @@ export default function MiscellaneousDetailPage() {
   const [misc, setMisc] = useState<Miscellaneous | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [isParticipant, setIsParticipant] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestTitle, setRequestTitle] = useState('');
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -44,9 +49,38 @@ export default function MiscellaneousDetailPage() {
     if (!id || !member?.id) return;
     miscellaneousService.getPeople(id).then((data) => {
       const owns = data.owners?.some((o: { member: { id: string } }) => o.member.id === member.id);
+      const participates = data.members?.some((m: { member: { id: string } }) => m.member.id === member.id);
       setIsOwner(owns ?? false);
+      setIsParticipant(participates ?? false);
     });
   }, [id, member?.id]);
+
+  const handleJoin = async () => {
+    if (!id) return;
+    if (misc?.participation_type === 'private') {
+      setShowRequestModal(true);
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await miscellaneousService.joinMiscellaneous(id);
+      setIsParticipant(true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSendRequest = async () => {
+    if (!id || !requestTitle.trim()) return;
+    setActionLoading(true);
+    try {
+      await miscellaneousService.createRequest(id, { title: requestTitle, message: requestMessage });
+      setRequestSent(true);
+      setShowRequestModal(false);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleArchive = async () => {
     if (!id) return;
@@ -134,6 +168,17 @@ export default function MiscellaneousDetailPage() {
                 </Button>
               </div>
             )}
+            {!isOwner && !isParticipant && !requestSent && misc.status === 'active' && (
+              <Button size="sm" disabled={actionLoading} onClick={handleJoin}>
+                {misc.participation_type === 'private' ? 'Solicitar participação' : 'Participar'}
+              </Button>
+            )}
+            {!isOwner && !isParticipant && requestSent && (
+              <span className="rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-xs font-medium">Solicitação enviada</span>
+            )}
+            {!isOwner && isParticipant && (
+              <span className="rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-medium">Participando</span>
+            )}
           </div>
 
           {/* Tabs */}
@@ -186,6 +231,32 @@ export default function MiscellaneousDetailPage() {
             )}
           </Tabs>
         </main>
+
+        {/* Request modal */}
+        {showRequestModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-xl border p-6 w-full max-w-sm space-y-4">
+              <h3 className="font-semibold">Solicitar participação</h3>
+              <p className="text-sm text-muted-foreground">Esta miscelânea é privada. Envie uma solicitação ao responsável.</p>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Título da solicitação *"
+                value={requestTitle}
+                onChange={(e) => setRequestTitle(e.target.value)}
+              />
+              <textarea
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                placeholder="Mensagem (opcional)"
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowRequestModal(false)}>Cancelar</Button>
+                <Button onClick={handleSendRequest} disabled={actionLoading || !requestTitle.trim()}>Enviar</Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Archive confirm */}
         {confirmArchive && (

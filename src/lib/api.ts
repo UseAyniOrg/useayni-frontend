@@ -25,10 +25,16 @@ api.interceptors.response.use(
   async error => {
     if (error.response?.status === 401) {
       const originalRequest = error.config;
+      const message = error.response?.data?.error ?? '';
+
+      // Sessão invalidada por troca de role ou logout remoto — força novo login
+      if (message.includes('Sessão encerrada')) {
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
 
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-
         try {
           const newToken = await authService.refreshToken();
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
