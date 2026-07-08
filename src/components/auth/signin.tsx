@@ -10,7 +10,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import FormField from '../common/formField';
+import FormField from '../common/FormField';
 import { loginFormSchema, type LoginFormData } from '@/schemas/signIn';
 
 export default function SignIn() {
