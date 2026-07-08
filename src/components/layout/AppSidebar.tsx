@@ -23,6 +23,7 @@ import {
   CheckSquare,
   Settings,
   ChevronRight,
+  UserCheck,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AccountSwitcher } from './AccountSwitcher';
@@ -179,6 +180,16 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
                   </CollapsibleContent>
                 </SidebarMenuItem>
               </Collapsible>
+              <SidebarMenuItem>
+                
+                  <SidebarMenuButton
+                    tooltip="Membros"
+                    onClick={() => navigate('/membros')}
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    <span>Membros</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Configurações">

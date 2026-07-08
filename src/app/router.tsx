@@ -6,6 +6,9 @@ import { ProtectedRoute } from "../components/ProtectedRoute.tsx";
 import MemberProfile from "@/pages/member-profile/member-profile.tsx";
 import MiscellaneousDetail from "@/pages/miscellaneous/miscellaneous-detail.tsx";
 import InviteCenter from "@/pages/invites/invite-center.tsx";
+import PendingApproval from "@/pages/pending-approval/pending-approval.tsx"; 
+import MemberApproval from "@/pages/member-approval/member-approval.tsx";   
+import MemberList from '@/pages/member-list/member-list.tsx';
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +35,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/membros",
+    element: (
+      <ProtectedRoute>
+        <MemberList />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/membros/:memberSlugName",
     element: (
@@ -46,6 +57,14 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <MiscellaneousDetail />
       </ProtectedRoute>
+     ),
+   },
+  {
+    path: "/cadastro-pendente",
+    element: (
+      <ProtectedRoute skipPendingCheck>
+        <PendingApproval />
+      </ProtectedRoute>
     ),
   },
   {
@@ -53,6 +72,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <InviteCenter />
+      </ProtectedRoute>
+      ),
+  },
+  {     
+    path: "/aprovacao-membros",
+    element: (
+      <ProtectedRoute requiresApprovalAccess>
+        <MemberApproval />
       </ProtectedRoute>
     ),
   },
