@@ -1,26 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  PadrinhoSelector,
-  findMemberById,
-  findMemberBySlug,
-  type Member,
-} from './padrinho-selector';
-import { validatePassword } from '@/utils/password';
-import { authService } from '@/lib/auth/authService';
 import {
   academicService,
   type CityOption,
@@ -28,127 +9,254 @@ import {
   type StateOption,
   type UniversityOption,
 } from '@/services/academicService';
-import { validateCPF } from '@/utils/cpf';
+import { useSelect } from '@/hooks/useSelect';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '../ui/button';
+import { useNavigate } from 'react-router-dom';
+import { signUpSchema, type SignUpData } from '@/schemas/signUp';
+import FormField from '../common/formField';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  PadrinhoSelector,
+  findMemberById,
+  findMemberBySlug,
+  type Member,
+} from '../common/padrinhoSelector';
+import { authService } from '@/lib/auth/authService';
 import { formatCPF } from '@/utils/cpf';
 import { formatPhone } from '@/utils/phone';
-import { validateEmail } from '@/utils/email';
+import SearchCombobox from '../common/searchCombobox';
+
+const TOTAL_STEPS = 3;
+const NOT_APPLICABLE = 'not_applicable';
 
 interface SignUpProps {
   padrinhoSlug?: string | null;
   sponsorMemberId?: string | null;
 }
 
-const NOT_APPLICABLE = 'not_applicable';
+const isUuid = (value?: string) =>
+  !!value &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+const getApiErrorMessage = (error: unknown) => {
+  const responseMessage =
+    typeof error === 'object' && error !== null && 'response' in error
+      ? (error as any).response?.data?.message
+      : undefined;
+
+  if (Array.isArray(responseMessage)) return responseMessage.join(', ');
+  if (typeof responseMessage === 'string') return responseMessage;
+  return 'Erro ao criar conta. Tente novamente.';
+};
 
 export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState('');
-  const [registrationCompleted, setRegistrationCompleted] = useState(false);
-
-  // Step 0 — Dados Acadêmicos
-  const [ra, setRa] = useState('');
-  const [admissionDate, setAdmissionDate] = useState('');
-  const [emailUniversity, setEmailUniversity] = useState('');
-  const [stateId, setStateId] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [universityId, setUniversityId] = useState('');
-  const [courseId, setCourseId] = useState('');
-  const [currentSemester, setCurrentSemester] = useState('');
-  const [states, setStates] = useState<StateOption[]>([]);
-  const [cities, setCities] = useState<CityOption[]>([]);
-  const [citySearch, setCitySearch] = useState('');
-  const [isCitySearchOpen, setIsCitySearchOpen] = useState(false);
-  const [universities, setUniversities] = useState<UniversityOption[]>([]);
-  const [universitySearch, setUniversitySearch] = useState('');
-  const [isUniversitySearchOpen, setIsUniversitySearchOpen] = useState(false);
-  const [isSearchingUniversities, setIsSearchingUniversities] = useState(false);
-  const [courses, setCourses] = useState<CourseOption[]>([]);
-  const [courseSearch, setCourseSearch] = useState('');
-  const [isCourseSearchOpen, setIsCourseSearchOpen] = useState(false);
   const [isLoadingAcademicData, setIsLoadingAcademicData] = useState(false);
-  const [academicDataError, setAcademicDataError] = useState('');
-
-  // Step 1 — Dados Pessoais
-  const [nome, setNome] = useState('');
-  const [sobrenome, setSobrenome] = useState('');
-  const [dataNascimento, setDataNascimento] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [emailPessoal, setEmailPessoal] = useState('');
+  const [registrationCompleted, setRegistrationCompleted] = useState(false);
   const [padrinho, setPadrinho] = useState<Member | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Step 2 — Senha
-  const [senha, setSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showSenha, setShowSenha] = useState(false);
-  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
+  const states = useSelect<StateOption>();
+  const cities = useSelect<CityOption>();
+  const universities = useSelect<UniversityOption>();
+  const courses = useSelect<CourseOption>();
 
-  // OTP / Verificação — comentado até implementação futura
-  // const [tipoVerificacao, setTipoVerificacao] = useState("");
-  // const [otpValue, setOtpValue] = useState("");
-  // const [codeSent, setCodeSent] = useState(false);
-  // const [resendTimer, setResendTimer] = useState(0);
+  const {
+    control,
+    formState: { errors },
+    handleSubmit: submitForm,
+    register,
+    setError,
+    setValue,
+    trigger,
+    watch,
+  } = useForm<SignUpData>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      ra: '',
+      admissionDate: '',
+      academicEmail: '',
+      stateId: '',
+      cityId: '',
+      universityId: '',
+      courseId: '',
+      currentSemester: '',
+      name: '',
+      surname: '',
+      birthDate: '',
+      cpf: '',
+      phone: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
-  const clearFieldError = (...fieldNames: string[]) => {
-    setErrors(prev => {
-      const next = { ...prev };
-      fieldNames.forEach(fieldName => {
-        delete next[fieldName];
-      });
-      return next;
-    });
-  };
+  const selectedUniversityId = watch('universityId');
+  const selectedCourseId = watch('courseId');
 
-  const setFieldValidation = (fieldName: string, message?: string) => {
-    setErrors(prev => {
-      const next = { ...prev };
-
-      if (message) next[fieldName] = message;
-      else delete next[fieldName];
-
-      return next;
-    });
-  };
-
-  const validateRequiredField = (fieldName: string, value: string, message: string) => {
-    setFieldValidation(fieldName, value.trim() ? undefined : message);
-  };
-
-  const validateEmailField = (fieldName: string, value: string, requiredMessage: string) => {
-    if (!value.trim()) {
-      setFieldValidation(fieldName, requiredMessage);
-      return;
-    }
-
-    setFieldValidation(fieldName, validateEmail(value) ? undefined : 'Email inválido');
-  };
-
-  const validateCourseSelection = (nextCourseId = courseId, nextCityId = cityId) => {
-    if (!nextCourseId) {
-      setFieldValidation('courseId', 'Curso é obrigatório');
-      return;
-    }
-
-    if (universityId === NOT_APPLICABLE || nextCourseId === NOT_APPLICABLE) {
-      setFieldValidation('courseId');
-      return;
-    }
-
-    const courseUniversityId = courses
-      .find(course => course.id === nextCourseId)
-      ?.courseUniversities?.find(
-        courseUniversity =>
-          courseUniversity.university_id === universityId && courseUniversity.city_id === nextCityId
-      )?.id;
-
-    setFieldValidation(
+  const stepTitles = ['Dados Acadêmicos', 'Dados Pessoais', 'Senha'];
+  const stepFields: Record<number, Array<keyof SignUpData>> = {
+    1: [
+      'ra',
+      'admissionDate',
+      'academicEmail',
+      'stateId',
+      'cityId',
+      'universityId',
       'courseId',
-      courseUniversityId ? undefined : 'Curso não disponível para a cidade selecionada'
-    );
+      'currentSemester',
+    ],
+    2: ['name', 'surname', 'birthDate', 'cpf', 'email', 'phone'],
+    3: ['password', 'confirmPassword'],
   };
+
+  const stateOptions = useMemo(
+    () =>
+      states.list.map(state => ({
+        id: state.id,
+        label: state.name,
+        description: state.uf,
+      })),
+    [states.list]
+  );
+
+  const cityOptions = useMemo(() => {
+    const query = cities.search.trim().toLowerCase();
+    return cities.list
+      .filter(city => !query || city.name.toLowerCase().includes(query))
+      .slice(0, 50)
+      .map(city => ({ id: city.id, label: city.name }));
+  }, [cities.list, cities.search]);
+
+  const universityOptions = useMemo(
+    () => [
+      { id: NOT_APPLICABLE, label: 'Não se aplica' },
+      ...universities.list.map(university => ({
+        id: university.id,
+        label: university.acronym ? `${university.acronym} - ${university.name}` : university.name,
+      })),
+    ],
+    [universities.list]
+  );
+
+  const courseOptions = useMemo(() => {
+    const query = courses.search.trim().toLowerCase();
+    return [
+      { id: NOT_APPLICABLE, label: 'Não se aplica' },
+      ...courses.list
+        .filter(course => !query || course.name.toLowerCase().includes(query))
+        .map(course => ({ id: course.id, label: course.name })),
+    ];
+  }, [courses.list, courses.search]);
+
+  const selectedCourseUniversityId =
+    selectedUniversityId !== NOT_APPLICABLE && selectedCourseId !== NOT_APPLICABLE
+      ? (() => {
+          const courseUniversities =
+            courses.list.find(course => course.id === selectedCourseId)?.courseUniversities || [];
+
+          return (
+            courseUniversities.find(
+              courseUniversity =>
+                courseUniversity.university_id === selectedUniversityId &&
+                courseUniversity.city_id === cities.value
+            )?.id ||
+            courseUniversities.find(
+              courseUniversity => courseUniversity.university_id === selectedUniversityId
+            )?.id
+          );
+        })()
+      : undefined;
+
+  const progress = (step / TOTAL_STEPS) * 100;
+
+  const updateField = (field: keyof SignUpData, value: string, shouldValidate = true) => {
+    setValue(field, value, { shouldDirty: true, shouldValidate });
+  };
+
+  const handleNext = async () => {
+    if (!(await trigger(stepFields[step]))) return;
+    setStep(prev => prev + 1);
+  };
+
+  const handleBack = () => setStep(prev => prev - 1);
+
+  const onSubmit = async (data: SignUpData) => {
+    if (!(await trigger(stepFields[3]))) return;
+
+    setIsLoading(true);
+
+    try {
+      const sponsorId = padrinho?.id;
+      const sponsorIsUuid = isUuid(sponsorId);
+
+      await authService.signUp(
+        {
+          name: `${data.name} ${data.surname}`,
+          cpf: data.cpf,
+          phone: data.phone,
+          email_personal: data.email,
+          email_university: data.academicEmail,
+          birth_date: data.birthDate,
+          admission_date: data.admissionDate,
+          ra: data.ra,
+          password: data.password,
+          city_id: data.cityId,
+          sponsor: sponsorIsUuid ? sponsorId : padrinho?.name,
+          course_university_id: selectedCourseUniversityId,
+          current_semester:
+            data.currentSemester && data.currentSemester !== NOT_APPLICABLE
+              ? Number(data.currentSemester)
+              : undefined,
+          university_not_applicable: data.universityId === NOT_APPLICABLE,
+          course_not_applicable: data.courseId === NOT_APPLICABLE,
+          current_semester_not_applicable: data.currentSemester === NOT_APPLICABLE,
+        },
+        sponsorIsUuid ? sponsorId : undefined
+      );
+
+      setRegistrationCompleted(true);
+    } catch (error) {
+      setError('root', { message: getApiErrorMessage(error) });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStates = async () => {
+      setIsLoadingAcademicData(true);
+
+      try {
+        const stateOptions = await academicService.getStates();
+        if (!isMounted) return;
+        states.setList(
+          [...stateOptions].sort((a, b) =>
+            a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+          )
+        );
+      } catch {
+        setError('root', { message: 'Não foi possível carregar os estados.' });
+      } finally {
+        if (isMounted) setIsLoadingAcademicData(false);
+      }
+    };
+
+    loadStates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -157,7 +265,6 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
       if (sponsorMemberId) {
         const found = await findMemberById(sponsorMemberId);
         if (!isMounted) return;
-
         setPadrinho(
           found || {
             id: sponsorMemberId,
@@ -167,16 +274,14 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
             university: '',
           }
         );
-        clearFieldError('padrinho');
         return;
       }
 
       if (padrinhoSlug) {
         const found = await findMemberBySlug(padrinhoSlug);
         if (!isMounted) return;
-
         if (found) setPadrinho(found);
-        else setErrors(prev => ({ ...prev, padrinho: 'Padrinho não encontrado' }));
+        else setError('root', { message: 'Padrinho não encontrado.' });
       }
     };
 
@@ -188,315 +293,165 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
   }, [padrinhoSlug, sponsorMemberId]);
 
   useEffect(() => {
-    const loadAcademicData = async () => {
-      setIsLoadingAcademicData(true);
-      setAcademicDataError('');
-
-      try {
-        const stateOptions = await academicService.getStates();
-
-        setStates(
-          [...stateOptions].sort((a, b) =>
-            a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
-          )
-        );
-      } catch {
-        setAcademicDataError('Não foi possível carregar os dados acadêmicos. Tente novamente.');
-      } finally {
-        setIsLoadingAcademicData(false);
-      }
-    };
-
-    loadAcademicData();
-  }, []);
-
-  useEffect(() => {
-    if (!stateId) {
-      setCities([]);
-      setCityId('');
-      setCitySearch('');
-      setUniversityId('');
-      setUniversitySearch('');
-      setUniversities([]);
+    if (!states.value) {
+      cities.clear();
+      universities.clear();
+      courses.clear();
+      updateField('stateId', '', false);
+      updateField('cityId', '', false);
+      updateField('universityId', '', false);
+      updateField('courseId', '', false);
       return;
     }
 
+    let isMounted = true;
+    cities.clear();
+    universities.clear();
+    courses.clear();
+    updateField('stateId', states.value);
+    updateField('cityId', '', false);
+    updateField('universityId', '', false);
+    updateField('courseId', '', false);
+
     const loadCities = async () => {
-      setCityId('');
-      setCitySearch('');
-      setUniversityId('');
-      setUniversitySearch('');
-      setUniversities([]);
+      setIsLoadingAcademicData(true);
+
       try {
-        const cityOptions = await academicService.getCitiesByState(stateId);
-        setCities(
+        const cityOptions = await academicService.getCitiesByState(states.value!);
+        if (!isMounted) return;
+        cities.setList(
           [...cityOptions].sort((a, b) =>
             a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
           )
         );
       } catch {
-        setCities([]);
-        setAcademicDataError('Não foi possível carregar as cidades deste estado.');
+        setError('root', { message: 'Não foi possível carregar as cidades.' });
+      } finally {
+        if (isMounted) setIsLoadingAcademicData(false);
       }
     };
 
     loadCities();
-  }, [stateId]);
 
-  const filteredCities = useMemo(() => {
-    const query = citySearch.trim().toLowerCase();
-
-    if (!query) return cities.slice(0, 50);
-
-    return cities.filter(city => city.name.toLowerCase().includes(query)).slice(0, 50);
-  }, [cities, citySearch]);
-
-  const filteredCourses = useMemo(() => {
-    const query = courseSearch.trim().toLowerCase();
-
-    if (!query) return courses;
-
-    return courses.filter(course => course.name.toLowerCase().includes(query));
-  }, [courses, courseSearch]);
+    return () => {
+      isMounted = false;
+    };
+  }, [states.value]);
 
   useEffect(() => {
-    if (universityId && universityId !== NOT_APPLICABLE) {
+    if (!cities.value || !states.value) {
+      universities.clear();
+      courses.clear();
+      updateField('cityId', '', false);
+      updateField('universityId', '', false);
+      updateField('courseId', '', false);
       return;
     }
 
-    if (!cityId || universityId === NOT_APPLICABLE) {
-      if (universityId !== NOT_APPLICABLE) {
-        setUniversityId('');
-        setUniversitySearch('');
-      }
-      setUniversities([]);
-      return;
-    }
+    let isMounted = true;
+    universities.clear();
+    courses.clear();
+    updateField('cityId', cities.value);
+    updateField('universityId', '', false);
+    updateField('courseId', '', false);
 
-    const query = universitySearch.trim();
-    if (query.length < 2) {
-      const timeoutId = window.setTimeout(async () => {
-        setIsSearchingUniversities(true);
-        setAcademicDataError('');
-
-        try {
-          const universityOptions = await academicService.getUniversities({
-            cityId,
-            stateId,
-          });
-          setUniversities(universityOptions.slice(0, 5));
-        } catch {
-          setUniversities([]);
-          setAcademicDataError('NÃ£o foi possÃ­vel buscar universidades.');
-        } finally {
-          setIsSearchingUniversities(false);
-        }
-      }, 250);
-
-      return () => window.clearTimeout(timeoutId);
-    }
-
-    if (universitySearch === 'Nao se aplica') {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(async () => {
-      setIsSearchingUniversities(true);
-      setAcademicDataError('');
+    const loadUniversities = async () => {
+      setIsLoadingAcademicData(true);
 
       try {
         const universityOptions = await academicService.getUniversities({
-          q: query,
-          cityId,
-          stateId,
+          cityId: cities.value,
+          stateId: states.value,
         });
-
-        setUniversities(universityOptions.slice(0, 30));
-        setIsUniversitySearchOpen(true);
+        if (!isMounted) return;
+        universities.setList(universityOptions.slice(0, 30));
       } catch {
-        setUniversities([]);
-        setAcademicDataError('Não foi possível buscar universidades.');
+        setError('root', { message: 'Não foi possível carregar as universidades.' });
       } finally {
-        setIsSearchingUniversities(false);
+        if (isMounted) setIsLoadingAcademicData(false);
       }
-    }, 350);
+    };
 
-    return () => window.clearTimeout(timeoutId);
-  }, [cityId, stateId, universitySearch, universityId]);
+    loadUniversities();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cities.value]);
 
   useEffect(() => {
-    if (!universityId || universityId === NOT_APPLICABLE) {
-      setCourses([]);
-      setCourseId(universityId === NOT_APPLICABLE ? NOT_APPLICABLE : '');
-      setCourseSearch(universityId === NOT_APPLICABLE ? 'Nao se aplica' : '');
+    if (!selectedUniversityId || selectedUniversityId === NOT_APPLICABLE) {
+      courses.clear();
+      if (selectedUniversityId === NOT_APPLICABLE) {
+        courses.setSearch('Não se aplica');
+        updateField('courseId', NOT_APPLICABLE);
+      }
       return;
     }
 
+    let isMounted = true;
+    courses.clear();
+    updateField('courseId', '', false);
+
     const loadCourses = async () => {
-      setCourseId('');
-      setCourseSearch('');
+      setIsLoadingAcademicData(true);
+
       try {
-        let courseOptions = await academicService.getCoursesByUniversity(universityId, cityId);
+        let courseOptions = await academicService.getCoursesByUniversity(
+          selectedUniversityId,
+          cities.value
+        );
 
         if (courseOptions.length === 0) {
-          courseOptions = await academicService.getCoursesByUniversity(universityId);
+          courseOptions = await academicService.getCoursesByUniversity(selectedUniversityId);
         }
 
-        setCourses(
+        if (!isMounted) return;
+        courses.setList(
           [...courseOptions].sort((a, b) =>
             a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
           )
         );
       } catch {
-        setCourses([]);
-        setAcademicDataError('Não foi possível carregar os cursos desta universidade.');
+        setError('root', { message: 'Não foi possível carregar os cursos.' });
+      } finally {
+        if (isMounted) setIsLoadingAcademicData(false);
       }
     };
 
     loadCourses();
-  }, [universityId, cityId]);
 
-  const selectedCourseUniversityId =
-    universityId !== NOT_APPLICABLE && courseId !== NOT_APPLICABLE
-      ? (() => {
-          const courseUniversities =
-            courses.find(course => course.id === courseId)?.courseUniversities || [];
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedUniversityId]);
 
-          return (
-            courseUniversities.find(
-              courseUniversity =>
-                courseUniversity.university_id === universityId &&
-                courseUniversity.city_id === cityId
-            )?.id ||
-            courseUniversities.find(
-              courseUniversity => courseUniversity.university_id === universityId
-            )?.id
-          );
-        })()
-      : undefined;
-  const validateStep = (step: number) => {
-    const newErrors: Record<string, string> = {};
+  useEffect(() => {
+    if (!cities.value || !states.value || selectedUniversityId === NOT_APPLICABLE) return;
 
-    if (step === 0) {
-      if (!ra) newErrors.ra = 'RA é obrigatório';
-      if (!admissionDate) newErrors.admissionDate = 'Data de ingresso é obrigatória';
-      if (!emailUniversity) newErrors.emailUniversity = 'Email acadêmico é obrigatório';
-      else if (!validateEmail(emailUniversity)) newErrors.emailUniversity = 'Email inválido';
-      if (!stateId) newErrors.stateId = 'Estado é obrigatório';
-      if (!cityId) newErrors.cityId = 'Cidade é obrigatória';
-      if (!universityId) newErrors.universityId = 'Universidade é obrigatória';
-      if (!courseId) newErrors.courseId = 'Curso é obrigatório';
-      if (!currentSemester) newErrors.currentSemester = 'Semestre atual é obrigatório';
-      if (
-        false &&
-        universityId !== NOT_APPLICABLE &&
-        courseId !== NOT_APPLICABLE &&
-        !selectedCourseUniversityId
-      )
-        newErrors.courseId = 'Curso não disponível para a cidade selecionada';
-    }
+    const query = universities.search.trim();
+    const timeoutId = window.setTimeout(
+      async () => {
+        setIsLoadingAcademicData(true);
 
-    if (step === 1) {
-      if (!nome) newErrors.nome = 'Nome é obrigatório';
-      if (!sobrenome) newErrors.sobrenome = 'Sobrenome é obrigatório';
-      if (!dataNascimento) newErrors.dataNascimento = 'Data de nascimento é obrigatória';
-      if (!cpf) newErrors.cpf = 'CPF é obrigatório';
-      else if (!validateCPF(cpf)) newErrors.cpf = 'CPF inválido';
-      if (!telefone) newErrors.telefone = 'Telefone é obrigatório';
-      else if (telefone.replace(/\D/g, '').length < 10) newErrors.telefone = 'Telefone inválido';
-      if (!emailPessoal) newErrors.emailPessoal = 'Email pessoal é obrigatório';
-      else if (!validateEmail(emailPessoal)) newErrors.emailPessoal = 'Email inválido';
-    }
+        try {
+          const universityOptions = await academicService.getUniversities({
+            q: query.length >= 2 ? query : undefined,
+            cityId: cities.value,
+            stateId: states.value,
+          });
+          universities.setList(universityOptions.slice(0, query.length >= 2 ? 30 : 5));
+        } catch {
+          setError('root', { message: 'Não foi possível buscar universidades.' });
+        } finally {
+          setIsLoadingAcademicData(false);
+        }
+      },
+      query.length >= 2 ? 350 : 250
+    );
 
-    if (step === 2) {
-      if (!senha) newErrors.senha = 'Senha é obrigatória';
-      else {
-        const validation = validatePassword(senha);
-        if (!validation.isValid) newErrors.senha = validation.message;
-      }
-      if (!confirmarSenha) newErrors.confirmarSenha = 'Confirmação obrigatória';
-      else if (senha !== confirmarSenha) newErrors.confirmarSenha = 'Senhas não coincidem';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) setCurrentStep(s => s + 1);
-  };
-
-  const handleBack = () => {
-    setCurrentStep(s => s - 1);
-    setErrors({});
-    setApiError('');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (currentStep < 2) {
-      handleNext();
-      return;
-    }
-
-    if (!validateStep(2)) return;
-
-    setIsLoading(true);
-    setApiError('');
-
-    try {
-      const sponsorId = padrinho?.id;
-      const sponsorIsUuid =
-        !!sponsorId &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          sponsorId
-        );
-
-      await authService.signUp(
-        {
-          name: `${nome} ${sobrenome}`,
-          cpf,
-          phone: telefone,
-          email_personal: emailPessoal,
-          email_university: emailUniversity,
-          birth_date: dataNascimento,
-          admission_date: admissionDate,
-          ra,
-          password: senha,
-          city_id: cityId,
-          sponsor: sponsorIsUuid ? sponsorId : padrinho?.name,
-          course_university_id: selectedCourseUniversityId,
-          current_semester:
-            currentSemester && currentSemester !== NOT_APPLICABLE
-              ? Number(currentSemester)
-              : undefined,
-          university_not_applicable: universityId === NOT_APPLICABLE,
-          course_not_applicable: courseId === NOT_APPLICABLE,
-          current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
-        },
-        sponsorIsUuid ? sponsorId : undefined
-      );
-
-      setRegistrationCompleted(true);
-    } catch (error: unknown) {
-      const responseMessage =
-        typeof error === 'object' && error !== null && 'response' in error
-          ? (error as any).response?.data?.message
-          : undefined;
-      const message = Array.isArray(responseMessage)
-        ? responseMessage.join(', ')
-        : typeof responseMessage === 'string'
-        ? responseMessage
-        : 'Erro ao criar conta. Tente novamente.';
-      setApiError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const stepTitles = ['Dados Acadêmicos', 'Dados Pessoais', 'Senha'];
-  const progress = ((currentStep + 1) / stepTitles.length) * 100;
+    return () => window.clearTimeout(timeoutId);
+  }, [universities.search]);
 
   if (registrationCompleted) {
     return (
@@ -504,8 +459,8 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Cadastro em análise</CardTitle>
           <CardDescription>
-            Ótimo ter você conosco, peço apenas mais um pouco de paciência, seu cadastro está em
-            análise, será notificado assim que esse processo for concluído.
+            Ótimo ter você conosco. Seu cadastro está em análise e você será notificado assim que
+            esse processo for concluído.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -517,684 +472,313 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
     );
   }
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="ra">RA (Registro Acadêmico)</Label>
-              <Input
-                id="ra"
-                placeholder="Digite seu RA"
-                value={ra}
-                onChange={e => {
-                  const value = e.target.value;
-                  setRa(value);
-                  validateRequiredField('ra', value, 'RA é obrigatório');
-                }}
-                className={errors.ra ? 'border-destructive' : ''}
-              />
-              {errors.ra && <p className="text-sm text-destructive">{errors.ra}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="admissionDate">Data de ingresso</Label>
-              <Input
-                id="admissionDate"
-                type="date"
-                min="0001-01-01"
-                max="9999-12-31"
-                value={admissionDate}
-                onChange={e => {
-                  const value = e.target.value;
-                  setAdmissionDate(value);
-                  validateRequiredField('admissionDate', value, 'Data de ingresso é obrigatória');
-                }}
-                className={errors.admissionDate ? 'border-destructive' : ''}
-              />
-              {errors.admissionDate && (
-                <p className="text-sm text-destructive">{errors.admissionDate}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emailUniversity">Email acadêmico</Label>
-              <Input
-                id="emailUniversity"
-                type="email"
-                placeholder="seu@universidade.edu.br"
-                value={emailUniversity}
-                onChange={e => {
-                  const value = e.target.value;
-                  setEmailUniversity(value);
-                  validateEmailField('emailUniversity', value, 'Email acadêmico é obrigatório');
-                }}
-                className={errors.emailUniversity ? 'border-destructive' : ''}
-              />
-              {errors.emailUniversity && (
-                <p className="text-sm text-destructive">{errors.emailUniversity}</p>
-              )}
-            </div>
-            {academicDataError && (
-              <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
-                {academicDataError}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Select
-                  value={stateId}
-                  onValueChange={value => {
-                    setStateId(value);
-                    setFieldValidation('stateId', value ? undefined : 'Estado é obrigatório');
-                    setFieldValidation('cityId', 'Cidade é obrigatória');
-                  }}
-                  disabled={isLoadingAcademicData}
-                >
-                  <SelectTrigger className={`w-full ${errors.stateId ? 'border-destructive' : ''}`}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {states.map(state => (
-                      <SelectItem key={state.id} value={state.id}>
-                        {state.uf} - {state.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.stateId && <p className="text-sm text-destructive">{errors.stateId}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Cidade</Label>
-                <div className="relative">
-                  <Input
-                    value={citySearch}
-                    onChange={event => {
-                      const value = event.target.value;
-                      setCitySearch(value);
-                      setCityId('');
-                      setUniversityId('');
-                      setUniversitySearch('');
-                      setUniversities([]);
-                      setCourseId('');
-                      setCourseSearch('');
-                      setCourses([]);
-                      setIsCitySearchOpen(true);
-                      setFieldValidation(
-                        'cityId',
-                        value.trim() ? 'Selecione uma cidade da lista' : 'Cidade obrigatoria'
-                      );
-                    }}
-                    onFocus={() => setIsCitySearchOpen(true)}
-                    onBlur={() => window.setTimeout(() => setIsCitySearchOpen(false), 150)}
-                    disabled={!stateId || isLoadingAcademicData}
-                    placeholder={stateId ? 'Digite a cidade' : 'Selecione um estado primeiro'}
-                    className={errors.cityId ? 'border-destructive' : ''}
-                  />
-                  {isCitySearchOpen && stateId && (
-                    <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow-lg">
-                      {filteredCities.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
-                          Nenhuma cidade encontrada
-                        </div>
-                      )}
-                      {filteredCities.map(city => (
-                        <button
-                          key={city.id}
-                          type="button"
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                          onMouseDown={event => event.preventDefault()}
-                          onClick={() => {
-                            setCityId(city.id);
-                            setCitySearch(city.name);
-                            setUniversityId('');
-                            setUniversitySearch('');
-                            setUniversities([]);
-                            setCourseId('');
-                            setCourseSearch('');
-                            setCourses([]);
-                            setIsCitySearchOpen(false);
-                            setFieldValidation('cityId');
-                          }}
-                        >
-                          {city.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="hidden">
-                  <Select
-                    value={cityId}
-                    onValueChange={value => {
-                      setCityId(value);
-                      setUniversityId('');
-                      setUniversitySearch('');
-                      setUniversities([]);
-                      setCourseId('');
-                      setCourses([]);
-                      setFieldValidation('cityId', value ? undefined : 'Cidade é obrigatória');
-                      if (courseId) validateCourseSelection(courseId, value);
-                    }}
-                    disabled={!stateId}
-                  >
-                    <SelectTrigger
-                      className={`w-full ${errors.cityId ? 'border-destructive' : ''}`}
-                    >
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map(city => (
-                        <SelectItem key={city.id} value={city.id}>
-                          {city.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {errors.cityId && <p className="text-sm text-destructive">{errors.cityId}</p>}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Universidade</Label>
-              <div className="relative">
-                <Input
-                  value={universitySearch}
-                  onChange={event => {
-                    const value = event.target.value;
-                    setUniversitySearch(value);
-                    setUniversityId('');
-                    setCourseId('');
-                    setCourseSearch('');
-                    setCourses([]);
-                    setIsUniversitySearchOpen(true);
-                    setFieldValidation(
-                      'universityId',
-                      value.trim()
-                        ? 'Selecione uma universidade da lista'
-                        : 'Universidade obrigatoria'
-                    );
-                  }}
-                  onFocus={() => setIsUniversitySearchOpen(true)}
-                  onBlur={() => window.setTimeout(() => setIsUniversitySearchOpen(false), 150)}
-                  disabled={!cityId || isLoadingAcademicData}
-                  placeholder={
-                    cityId ? 'Digite pelo menos 2 letras' : 'Selecione uma cidade primeiro'
-                  }
-                  className={errors.universityId ? 'border-destructive' : ''}
-                />
-                {isUniversitySearchOpen && cityId && (
-                  <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow-lg">
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                      onMouseDown={event => event.preventDefault()}
-                      onClick={() => {
-                        setUniversityId(NOT_APPLICABLE);
-                        setUniversitySearch('Nao se aplica');
-                        setUniversities([]);
-                        setIsUniversitySearchOpen(false);
-                        setCourseId(NOT_APPLICABLE);
-                        setCourseSearch('Nao se aplica');
-                        setCourses([]);
-                        setFieldValidation('universityId');
-                        setFieldValidation('courseId');
-                      }}
-                    >
-                      Nao se aplica
-                    </button>
-                    {isSearchingUniversities && (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Buscando...</div>
-                    )}
-                    {!isSearchingUniversities &&
-                      universitySearch.trim().length >= 2 &&
-                      universities.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
-                          Nenhuma universidade encontrada
-                        </div>
-                      )}
-                    {universities.map(university => (
-                      <button
-                        key={university.id}
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                        onMouseDown={event => event.preventDefault()}
-                        onClick={() => {
-                          setUniversityId(university.id);
-                          setUniversitySearch(
-                            university.acronym
-                              ? `${university.acronym} - ${university.name}`
-                              : university.name
-                          );
-                          setIsUniversitySearchOpen(false);
-                          setCourseSearch('');
-                          setFieldValidation('universityId');
-                          setFieldValidation('courseId', 'Curso obrigatorio');
-                        }}
-                      >
-                        <span className="font-medium">{university.acronym || university.name}</span>
-                        {university.acronym && (
-                          <span className="block text-xs text-muted-foreground">
-                            {university.name}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="hidden">
-                <Select
-                  value={universityId}
-                  onValueChange={value => {
-                    setUniversityId(value);
-                    setFieldValidation(
-                      'universityId',
-                      value ? undefined : 'Universidade é obrigatória'
-                    );
-                    if (value === NOT_APPLICABLE) setFieldValidation('courseId');
-                    else setFieldValidation('courseId', 'Curso é obrigatório');
-                  }}
-                  disabled={isLoadingAcademicData}
-                >
-                  <SelectTrigger
-                    className={`w-full ${errors.universityId ? 'border-destructive' : ''}`}
-                  >
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                    {universities.map(university => (
-                      <SelectItem key={university.id} value={university.id}>
-                        {university.acronym
-                          ? `${university.acronym} - ${university.name}`
-                          : university.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {errors.universityId && (
-                <p className="text-sm text-destructive">{errors.universityId}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Curso</Label>
-              <div className="relative">
-                <Input
-                  value={courseSearch}
-                  onChange={event => {
-                    const value = event.target.value;
-                    setCourseSearch(value);
-                    setCourseId('');
-                    setIsCourseSearchOpen(true);
-                    setFieldValidation(
-                      'courseId',
-                      value.trim() ? 'Selecione um curso da lista' : 'Curso obrigatorio'
-                    );
-                  }}
-                  onFocus={() => setIsCourseSearchOpen(true)}
-                  onBlur={() => window.setTimeout(() => setIsCourseSearchOpen(false), 150)}
-                  disabled={!universityId || universityId === NOT_APPLICABLE}
-                  placeholder={
-                    universityId && universityId !== NOT_APPLICABLE
-                      ? 'Digite o curso'
-                      : 'Selecione uma universidade primeiro'
-                  }
-                  className={errors.courseId ? 'border-destructive' : ''}
-                />
-                {isCourseSearchOpen && universityId && universityId !== NOT_APPLICABLE && (
-                  <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow-lg">
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                      onMouseDown={event => event.preventDefault()}
-                      onClick={() => {
-                        setCourseId(NOT_APPLICABLE);
-                        setCourseSearch('Nao se aplica');
-                        setIsCourseSearchOpen(false);
-                        setFieldValidation('courseId');
-                      }}
-                    >
-                      Nao se aplica
-                    </button>
-                    {filteredCourses.length === 0 && courseSearch.trim() && (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Nenhum curso encontrado
-                      </div>
-                    )}
-                    {filteredCourses.map(course => (
-                      <button
-                        key={course.id}
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                        onMouseDown={event => event.preventDefault()}
-                        onClick={() => {
-                          setCourseId(course.id);
-                          setCourseSearch(course.name);
-                          setIsCourseSearchOpen(false);
-                          validateCourseSelection(course.id);
-                        }}
-                      >
-                        {course.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="hidden">
-                <Select
-                  value={courseId}
-                  onValueChange={value => {
-                    setCourseId(value);
-                    validateCourseSelection(value);
-                  }}
-                  disabled={!universityId || universityId === NOT_APPLICABLE}
-                >
-                  <SelectTrigger
-                    className={`w-full ${errors.courseId ? 'border-destructive' : ''}`}
-                  >
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                    {courses.map(course => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {errors.courseId && <p className="text-sm text-destructive">{errors.courseId}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Semestre atual</Label>
-              <Select
-                value={currentSemester}
-                onValueChange={value => {
-                  setCurrentSemester(value);
-                  setFieldValidation(
-                    'currentSemester',
-                    value ? undefined : 'Semestre atual é obrigatório'
-                  );
-                }}
-              >
-                <SelectTrigger
-                  className={`w-full ${errors.currentSemester ? 'border-destructive' : ''}`}
-                >
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
-                  {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(semester => (
-                    <SelectItem key={semester} value={semester}>
-                      {semester}º semestre
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.currentSemester && (
-                <p className="text-sm text-destructive">{errors.currentSemester}</p>
-              )}
-            </div>
-          </div>
-        );
-
-      case 1:
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome</Label>
-                <Input
-                  id="nome"
-                  placeholder="Nome"
-                  value={nome}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setNome(value);
-                    validateRequiredField('nome', value, 'Nome é obrigatório');
-                  }}
-                  className={errors.nome ? 'border-destructive' : ''}
-                />
-                {errors.nome && <p className="text-sm text-destructive">{errors.nome}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sobrenome">Sobrenome</Label>
-                <Input
-                  id="sobrenome"
-                  placeholder="Sobrenome"
-                  value={sobrenome}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setSobrenome(value);
-                    validateRequiredField('sobrenome', value, 'Sobrenome é obrigatório');
-                  }}
-                  className={errors.sobrenome ? 'border-destructive' : ''}
-                />
-                {errors.sobrenome && <p className="text-sm text-destructive">{errors.sobrenome}</p>}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dataNascimento">Data de nascimento</Label>
-              <Input
-                id="dataNascimento"
-                type="date"
-                min="0001-01-01"
-                max="9999-12-31"
-                value={dataNascimento}
-                onChange={e => {
-                  const value = e.target.value;
-                  setDataNascimento(value);
-                  validateRequiredField(
-                    'dataNascimento',
-                    value,
-                    'Data de nascimento é obrigatória'
-                  );
-                }}
-                className={errors.dataNascimento ? 'border-destructive' : ''}
-              />
-              {errors.dataNascimento && (
-                <p className="text-sm text-destructive">{errors.dataNascimento}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChange={e => {
-                  const value = formatCPF(e.target.value);
-                  setCpf(value);
-                  if (!value) setFieldValidation('cpf', 'CPF é obrigatório');
-                  else setFieldValidation('cpf', validateCPF(value) ? undefined : 'CPF inválido');
-                }}
-                className={errors.cpf ? 'border-destructive' : ''}
-              />
-              {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="telefone">Telefone</Label>
-              <Input
-                id="telefone"
-                placeholder="(11) 99999-9999"
-                value={telefone}
-                onChange={e => {
-                  const value = formatPhone(e.target.value);
-                  setTelefone(value);
-                  if (!value) setFieldValidation('telefone', 'Telefone é obrigatório');
-                  else
-                    setFieldValidation(
-                      'telefone',
-                      value.replace(/\D/g, '').length >= 10 ? undefined : 'Telefone inválido'
-                    );
-                }}
-                className={errors.telefone ? 'border-destructive' : ''}
-              />
-              {errors.telefone && <p className="text-sm text-destructive">{errors.telefone}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emailPessoal">Email pessoal</Label>
-              <Input
-                id="emailPessoal"
-                type="email"
-                placeholder="seu@email.com"
-                value={emailPessoal}
-                onChange={e => {
-                  const value = e.target.value;
-                  setEmailPessoal(value);
-                  validateEmailField('emailPessoal', value, 'Email pessoal é obrigatório');
-                }}
-                className={errors.emailPessoal ? 'border-destructive' : ''}
-              />
-              {errors.emailPessoal && (
-                <p className="text-sm text-destructive">{errors.emailPessoal}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Padrinho (opcional)</Label>
-              <PadrinhoSelector
-                selectedPadrinho={padrinho}
-                onSelect={selected => {
-                  setPadrinho(selected);
-                  clearFieldError('padrinho');
-                }}
-              />
-              {errors.padrinho && <p className="text-sm text-destructive">{errors.padrinho}</p>}
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-4">
-            {apiError && (
-              <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
-                {apiError}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="senha">Senha</Label>
-              <div className="relative">
-                <Input
-                  id="senha"
-                  type={showSenha ? 'text' : 'password'}
-                  placeholder="Digite sua senha"
-                  value={senha}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setSenha(value);
-
-                    if (!value) {
-                      setFieldValidation('senha', 'Senha é obrigatória');
-                    } else {
-                      const validation = validatePassword(value);
-                      setFieldValidation(
-                        'senha',
-                        validation.isValid ? undefined : validation.message
-                      );
-                    }
-
-                    if (confirmarSenha) {
-                      setFieldValidation(
-                        'confirmarSenha',
-                        value === confirmarSenha ? undefined : 'Senhas não coincidem'
-                      );
-                    }
-                  }}
-                  className={errors.senha ? 'border-destructive pr-10' : 'pr-10'}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowSenha(!showSenha)}
-                >
-                  {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-              {errors.senha && <p className="text-sm text-destructive">{errors.senha}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmarSenha">Confirmar senha</Label>
-              <div className="relative">
-                <Input
-                  id="confirmarSenha"
-                  type={showConfirmarSenha ? 'text' : 'password'}
-                  placeholder="Confirme sua senha"
-                  value={confirmarSenha}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setConfirmarSenha(value);
-                    if (!value) setFieldValidation('confirmarSenha', 'Confirmação obrigatória');
-                    else
-                      setFieldValidation(
-                        'confirmarSenha',
-                        senha === value ? undefined : 'Senhas não coincidem'
-                      );
-                  }}
-                  className={errors.confirmarSenha ? 'border-destructive pr-10' : 'pr-10'}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowConfirmarSenha(!showConfirmarSenha)}
-                >
-                  {showConfirmarSenha ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {errors.confirmarSenha && (
-                <p className="text-sm text-destructive">{errors.confirmarSenha}</p>
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   return (
     <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold">Cadastrar</CardTitle>
         <CardDescription>
-          {stepTitles[currentStep]} — Passo {currentStep + 1} de {stepTitles.length}
+          {stepTitles[step - 1]} - Passo {step} de {TOTAL_STEPS}
         </CardDescription>
         <div className="mt-4">
           <Progress value={progress} className="w-full" />
         </div>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {renderStep()}
+        <form onSubmit={submitForm(onSubmit)} className="space-y-4">
+          {errors.root?.message && (
+            <div className="rounded-md bg-red-50 p-3 text-center text-sm text-red-500">
+              {errors.root.message}
+            </div>
+          )}
+
+          {step === 1 && (
+            <>
+              <FormField id="ra" label="RA (Registro Acadêmico)" error={errors.ra}>
+                <Input placeholder="Digite seu RA" {...register('ra')} />
+              </FormField>
+
+              <FormField
+                id="admissionDate"
+                label="Data de ingresso no curso"
+                error={errors.admissionDate}
+              >
+                <Input
+                  type="date"
+                  min="0001-01-01"
+                  max="9999-12-31"
+                  {...register('admissionDate')}
+                />
+              </FormField>
+
+              <FormField id="academicEmail" label="Email acadêmico" error={errors.academicEmail}>
+                <Input
+                  type="email"
+                  placeholder="seu@universidade.edu.br"
+                  {...register('academicEmail')}
+                />
+              </FormField>
+
+              <FormField id="stateId" label="Estado" error={errors.stateId}>
+                <Controller
+                  control={control}
+                  name="stateId"
+                  render={() => (
+                    <SearchCombobox
+                      disabled={isLoadingAcademicData}
+                      emptyMessage="Estado não encontrado"
+                      onSearchChange={states.setSearch}
+                      onValueChange={value => {
+                        states.setValue(value || '');
+                        updateField('stateId', value || '');
+                        const selected = states.list.find(state => state.id === value);
+                        states.setSearch(selected?.name || '');
+                      }}
+                      options={stateOptions}
+                      placeholder="Selecione o estado"
+                      search={states.search}
+                      value={states.value}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="cityId" label="Cidade" error={errors.cityId}>
+                <Controller
+                  control={control}
+                  name="cityId"
+                  render={() => (
+                    <SearchCombobox
+                      disabled={!states.value || isLoadingAcademicData}
+                      emptyMessage="Cidade não encontrada"
+                      onSearchChange={cities.setSearch}
+                      onValueChange={value => {
+                        cities.setValue(value || '');
+                        updateField('cityId', value || '');
+                        const selected = cities.list.find(city => city.id === value);
+                        cities.setSearch(selected?.name || '');
+                      }}
+                      options={cityOptions}
+                      placeholder={
+                        states.value ? 'Digite a cidade' : 'Selecione um estado primeiro'
+                      }
+                      search={cities.search}
+                      value={cities.value}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="universityId" label="Universidade" error={errors.universityId}>
+                <Controller
+                  control={control}
+                  name="universityId"
+                  render={() => (
+                    <SearchCombobox
+                      disabled={!cities.value || isLoadingAcademicData}
+                      emptyMessage="Universidade não encontrada"
+                      onSearchChange={universities.setSearch}
+                      onValueChange={value => {
+                        universities.setValue(value || '');
+                        updateField('universityId', value || '');
+                        const selected = universityOptions.find(option => option.id === value);
+                        universities.setSearch(selected?.label || '');
+                      }}
+                      options={universityOptions}
+                      placeholder={
+                        cities.value ? 'Digite a universidade' : 'Selecione uma cidade primeiro'
+                      }
+                      search={universities.search}
+                      value={selectedUniversityId}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="courseId" label="Curso" error={errors.courseId}>
+                <Controller
+                  control={control}
+                  name="courseId"
+                  render={() => (
+                    <SearchCombobox
+                      disabled={!selectedUniversityId || selectedUniversityId === NOT_APPLICABLE}
+                      emptyMessage="Curso não encontrado"
+                      onSearchChange={courses.setSearch}
+                      onValueChange={value => {
+                        courses.setValue(value || '');
+                        updateField('courseId', value || '');
+                        const selected = courseOptions.find(option => option.id === value);
+                        courses.setSearch(selected?.label || '');
+                      }}
+                      options={courseOptions}
+                      placeholder={
+                        selectedUniversityId && selectedUniversityId !== NOT_APPLICABLE
+                          ? 'Digite o curso'
+                          : 'Selecione uma universidade primeiro'
+                      }
+                      search={courses.search}
+                      value={selectedCourseId}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="currentSemester" label="Semestre atual" error={errors.currentSemester}>
+                <Controller
+                  control={control}
+                  name="currentSemester"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NOT_APPLICABLE}>Não se aplica</SelectItem>
+                        {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(
+                          semester => (
+                            <SelectItem key={semester} value={semester}>
+                              {semester}º semestre
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField id="name" label="Nome" error={errors.name}>
+                  <Input placeholder="Nome" {...register('name')} />
+                </FormField>
+                <FormField id="surname" label="Sobrenome" error={errors.surname}>
+                  <Input placeholder="Sobrenome" {...register('surname')} />
+                </FormField>
+              </div>
+
+              <FormField id="birthDate" label="Data de nascimento" error={errors.birthDate}>
+                <Input type="date" min="0001-01-01" max="9999-12-31" {...register('birthDate')} />
+              </FormField>
+
+              <FormField id="cpf" label="CPF" error={errors.cpf}>
+                <Controller
+                  control={control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <Input
+                      placeholder="000.000.000-00"
+                      value={field.value}
+                      onChange={event => field.onChange(formatCPF(event.target.value))}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="phone" label="Telefone" error={errors.phone}>
+                <Controller
+                  control={control}
+                  name="phone"
+                  render={({ field }) => (
+                    <Input
+                      placeholder="(11) 99999-9999"
+                      value={field.value}
+                      onChange={event => field.onChange(formatPhone(event.target.value))}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField id="email" label="Email pessoal" error={errors.email}>
+                <Input type="email" placeholder="seu@email.com" {...register('email')} />
+              </FormField>
+
+              <FormField id="padrinho" label="Padrinho (opcional)">
+                <PadrinhoSelector selectedPadrinho={padrinho} onSelect={setPadrinho} />
+              </FormField>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <FormField id="password" label="Senha" error={errors.password}>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Digite sua senha"
+                    className="pr-10"
+                    {...register('password')}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(prev => !prev)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </FormField>
+
+              <FormField
+                id="confirmPassword"
+                label="Confirmar senha"
+                error={errors.confirmPassword}
+              >
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Confirme sua senha"
+                    className="pr-10"
+                    {...register('confirmPassword')}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </FormField>
+            </>
+          )}
+
           <div className="flex gap-2">
-            {currentStep > 0 && (
+            {step > 1 && (
               <Button type="button" variant="outline" onClick={handleBack} className="flex-1">
                 Voltar
               </Button>
             )}
-            <Button type="submit" className="flex-1" disabled={isLoading}>
-              {currentStep === 2 ? (isLoading ? 'Criando conta...' : 'Finalizar') : 'Próximo'}
-            </Button>
+            {step < TOTAL_STEPS && (
+              <Button type="button" className="flex-1" onClick={handleNext}>
+                Próximo
+              </Button>
+            )}
+            {step === TOTAL_STEPS && (
+              <Button type="submit" className="flex-1" disabled={isLoading}>
+                {isLoading ? 'Criando conta...' : 'Finalizar'}
+              </Button>
+            )}
           </div>
         </form>
-        {currentStep === 0 && (
+
+        {step === 1 && (
           <div className="mt-4 text-center text-sm">
             Já tem uma conta?{' '}
             <button
+              type="button"
               onClick={() => navigate('/login')}
-              className="text-primary hover:underline font-medium"
+              className="font-medium text-primary hover:underline"
             >
               Entrar
             </button>

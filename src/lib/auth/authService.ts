@@ -86,4 +86,3 @@ function parseJwt(token: string): AuthUser | null {
     return null;
   }
 }
-

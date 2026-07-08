@@ -1,31 +1,55 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { useNavigate } from 'react-router-dom';
-import { validateEmail } from '@/utils/email';
-import { validatePassword } from '@/utils/password';
+import FormField from '../common/formField';
 import { formatPhone } from '@/utils/phone';
-import { validatePhone } from '@/utils/phone';
+import {
+  forgotPasswordFormSchema,
+  type ForgotPasswordFormData,
+} from '@/schemas/forgotPassword';
+
+const RESEND_SECONDS = 300;
 
 export function ForgotPassword() {
-  const [step, setStep] = useState(0); // 0 -> informar email/telefone; 1 -> informar código; 2 -> informar nova senha
-  const [verificationType, setVerificationType] = useState<'email' | 'phone'>('email');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [otpValue, setOtpValue] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
+  const [step, setStep] = useState(0);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [successMessage, setSuccessMessage] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-  const [error, setError] = useState('');
-  const [sucessMessage, setSucessMessage] = useState('');
-  const navigate = useNavigate();
+
+  const {
+    clearErrors,
+    control,
+    formState: { errors },
+    handleSubmit,
+    register,
+    setError,
+    setValue,
+    trigger,
+    watch,
+  } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordFormSchema),
+    defaultValues: {
+      verificationType: 'email',
+      email: '',
+      phone: '',
+      otpValue: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const verificationType = watch('verificationType');
+  const otpValue = watch('otpValue');
+  const error = errors.root?.message;
 
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -37,50 +61,62 @@ export function ForgotPassword() {
     return () => window.clearInterval(interval);
   }, [resendTimer]);
 
-  const handleSendCode = (e: FormEvent) => {
-    e.preventDefault();
+  const handleVerificationTypeChange = (value: string) => {
+    const nextType = value as ForgotPasswordFormData['verificationType'];
 
-    if (verificationType === 'email' && !validateEmail(email)) {
-      setError('O e-mail informado é inválido!');
-      return;
-    }
+    setValue('verificationType', nextType, { shouldDirty: true });
+    clearErrors(['email', 'phone']);
+    setSuccessMessage('');
+  };
 
-    if (verificationType === 'phone' && !validatePhone(phone)) {
-      setError('O telefone informado é inválido!');
-      return;
-    }
+  const handleSendCode = async () => {
+    const fields: Array<keyof ForgotPasswordFormData> =
+      verificationType === 'email' ? ['verificationType', 'email'] : ['verificationType', 'phone'];
 
-    setResendTimer(300);
+    if (!(await trigger(fields))) return;
+
+    setResendTimer(RESEND_SECONDS);
     setStep(1);
-    setError('');
-    setSucessMessage(
+    clearErrors();
+    setSuccessMessage(
       `Se o ${
         verificationType === 'phone' ? 'telefone' : 'e-mail'
       } informado estiver cadastrado, um código de verificação foi enviado.`
     );
 
-    // Solicitação pro backend
+    // TODO: chamar o backend para solicitar o código quando o endpoint estiver disponível.
   };
 
-  const handleVerifyCode = () => {
-    // Simular verificação
+  const handleVerifyCode = async () => {
+    if (!(await trigger('otpValue'))) return;
+
     setStep(2);
-    setError('');
-    setSucessMessage('');
+    clearErrors();
+    setSuccessMessage('');
+
+    // TODO: chamar o backend para validar o código quando o endpoint estiver disponível.
   };
 
-  const handleResetPassword = () => {
-    const validation = validatePassword(newPassword);
-    if (!validation.isValid) {
-      setError(validation.message);
-      return;
+  const onSubmit = async (data: ForgotPasswordFormData) => {
+    if (!(await trigger(['password', 'confirmPassword']))) return;
+
+    try {
+      clearErrors();
+      setSuccessMessage('');
+
+      const resetPayload = {
+        verificationType: data.verificationType,
+        email: data.email,
+        phone: data.phone,
+        otpValue: data.otpValue,
+        password: data.password,
+      };
+      void resetPayload;
+
+      navigate('/login');
+    } catch {
+      setError('root', { message: 'Não foi possível alterar sua senha.' });
     }
-    if (newPassword !== confirmPassword) {
-      setError('Senhas não coincidem');
-      return;
-    }
-    setError('');
-    navigate('/login');
   };
 
   return (
@@ -89,151 +125,165 @@ export function ForgotPassword() {
         <CardTitle className="text-2xl font-bold">Recuperar Senha</CardTitle>
         <CardDescription>Escolha um método para recuperar sua conta</CardDescription>
       </CardHeader>
+
       <CardContent>
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="rounded-md border border-red-200 bg-red-100 px-4 py-3 text-sm text-center text-red-700">
+            <div className="rounded-md border border-red-200 bg-red-100 px-4 py-3 text-center text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {sucessMessage && (
-            <div className="rounded-md border border-green-200 bg-green-100 px-4 py-3 text-sm text-center text-green-700">
-              {sucessMessage}
+          {successMessage && (
+            <div className="rounded-md border border-green-200 bg-green-100 px-4 py-3 text-center text-sm text-green-700">
+              {successMessage}
             </div>
           )}
 
           {step !== 2 && (
             <>
-              <Tabs
-                defaultValue="email"
-                onValueChange={v => setVerificationType(v as 'email' | 'phone')}
-              >
-                <TabsList className="w-full">
-                  <TabsTrigger
-                    value="email"
-                    className="data-[state=active]:bg-primary data-[state=active]:text-white"
-                    disabled={step === 1}
-                  >
-                    E-mail
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="phone"
-                    className="data-[state=active]:bg-primary data-[state=active]:text-white"
-                    disabled={step === 1}
-                  >
-                    Telefone
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <Controller
+                control={control}
+                name="verificationType"
+                render={({ field }) => (
+                  <Tabs value={field.value} onValueChange={handleVerificationTypeChange}>
+                    <TabsList className="w-full">
+                      <TabsTrigger
+                        value="email"
+                        className="data-[state=active]:bg-primary data-[state=active]:text-white"
+                        disabled={step === 1}
+                      >
+                        E-mail
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="phone"
+                        className="data-[state=active]:bg-primary data-[state=active]:text-white"
+                        disabled={step === 1}
+                      >
+                        Telefone
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                )}
+              />
 
-              <form onSubmit={handleSendCode} className="flex items-end gap-2">
-                <div className="flex-grow space-y-2">
+              <div className="flex items-end gap-2">
+                <div className="flex-grow">
                   {verificationType === 'email' && (
-                    <>
-                      <Label htmlFor='email'>Email</Label>
+                    <FormField id="email" label="Email" error={errors.email}>
                       <Input
-                        id='email'
+                        id="email"
                         type="email"
-                        value={email}
-                        required
                         placeholder="Email para receber o código"
-                        onChange={e => setEmail(e.target.value)}
+                        disabled={step === 1}
+                        {...register('email')}
                       />
-                    </>
+                    </FormField>
                   )}
-                  {verificationType === 'phone' && (
-                    <>
-                      <Label htmlFor='phone'>Telefone</Label>
-                      <Input
-                        id='phone'
-                        type="tel"
-                        value={phone}
-                        required
-                        placeholder="Telefone para receber o código"
-                        onChange={e => {
-                          const value = formatPhone(e.target.value);
-                          setPhone(value);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-                {resendTimer <= 0 && (
-                  <Button variant="outline" type='submit'>
-                    Enviar Código
-                  </Button>
-                )}
-                {resendTimer > 0 && (
-                  <Button variant="outline" disabled>
-                    {resendTimer}s
-                  </Button>
-                )}
-              </form>
 
-              <form onSubmit={handleVerifyCode} className="space-y-2">
-                <Label htmlFor='verificationCode'>Código de verificação</Label>
-                <div className="flex">
-                  <InputOTP
-                    id='verificationCode'
-                    maxLength={6}
-                    value={otpValue}
-                    onChange={setOtpValue}
-                    disabled={!(step == 1)}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
+                  {verificationType === 'phone' && (
+                    <FormField id="phone" label="Telefone" error={errors.phone}>
+                      <Controller
+                        control={control}
+                        name="phone"
+                        render={({ field }) => (
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="Telefone para receber o código"
+                            disabled={step === 1}
+                            value={field.value}
+                            onChange={event => field.onChange(formatPhone(event.target.value))}
+                          />
+                        )}
+                      />
+                    </FormField>
+                  )}
                 </div>
-              </form>
+
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={resendTimer > 0}
+                >
+                  {resendTimer > 0 ? `${resendTimer}s` : 'Enviar Código'}
+                </Button>
+              </div>
+
+              <FormField id="verificationCode" label="Código de verificação" error={errors.otpValue}>
+                <Controller
+                  control={control}
+                  name="otpValue"
+                  render={({ field }) => (
+                    <InputOTP
+                      id="verificationCode"
+                      maxLength={6}
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={step !== 1}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  )}
+                />
+              </FormField>
             </>
           )}
 
           {step === 2 && (
             <>
-              <div className="space-y-2">
-                <Label>Nova senha</Label>
+              <FormField id="password" label="Nova senha" error={errors.password}>
                 <div className="relative">
                   <Input
+                    id="password"
                     type={showNewPassword ? 'text' : 'password'}
                     placeholder="Digite sua nova senha"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
                     className="pr-10"
+                    {...register('password')}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    onClick={() => setShowNewPassword(previous => !previous)}
                   >
-                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showNewPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmar nova senha</Label>
+              </FormField>
+
+              <FormField
+                id="confirmPassword"
+                label="Confirmar nova senha"
+                error={errors.confirmPassword}
+              >
                 <div className="relative">
                   <Input
+                    id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirme sua nova senha"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
                     className="pr-10"
+                    {...register('confirmPassword')}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onClick={() => setShowConfirmPassword(previous => !previous)}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -242,28 +292,38 @@ export function ForgotPassword() {
                     )}
                   </Button>
                 </div>
-              </div>
+              </FormField>
             </>
           )}
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/login')} className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/login')}
+              className="flex-1"
+            >
               Cancelar
             </Button>
 
             {step !== 2 && (
-              <Button onClick={handleVerifyCode} className="flex-1" disabled={otpValue.length < 6}>
+              <Button
+                type="button"
+                onClick={handleVerifyCode}
+                className="flex-1"
+                disabled={otpValue.length < 6}
+              >
                 Verificar Código
               </Button>
             )}
 
             {step === 2 && (
-              <Button onClick={handleResetPassword} className="flex-1">
+              <Button type="submit" className="flex-1">
                 Alterar Senha
               </Button>
             )}
           </div>
-        </div>
+        </form>
       </CardContent>
     </Card>
   );
