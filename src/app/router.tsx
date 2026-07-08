@@ -4,6 +4,9 @@ import Credentials from "../pages/credencials/credencials.tsx";
 import Home from "../pages/home/home.tsx";
 import { ProtectedRoute } from "../components/ProtectedRoute.tsx";
 import MemberProfile from "@/pages/member-profile/member-profile.tsx";
+import PendingApproval from "@/pages/pending-approval/pending-approval.tsx"; 
+import MemberApproval from "@/pages/member-approval/member-approval.tsx";   
+import MemberList from '@/pages/member-list/member-list.tsx';
 
 export const router = createBrowserRouter([
   {
@@ -30,11 +33,35 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/membros",
+    element: (
+      <ProtectedRoute>
+        <MemberList />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/membros/:memberSlugName",
     element: (
       <ProtectedRoute>
         <MemberProfile />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/cadastro-pendente",
+    element: (
+      <ProtectedRoute skipPendingCheck>
+        <PendingApproval />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/aprovacao-membros",
+    element: (
+      <ProtectedRoute requiresApprovalAccess>
+        <MemberApproval />
       </ProtectedRoute>
     ),
   },
