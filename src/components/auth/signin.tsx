@@ -13,11 +13,89 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import FormField from '../common/FormField';
 import { loginFormSchema, type LoginFormData } from '@/schemas/signIn';
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOGIN_BLOCK_DURATION_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPTS_STORAGE_KEY = 'useayni:login-attempts';
+
+type LoginAttemptEntry = {
+  attempts: number;
+  blockedUntil: number | null;
+};
+
+type LoginAttemptsStore = Record<string, LoginAttemptEntry>;
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function readAttemptsStore(): LoginAttemptsStore {
+  const rawStore = localStorage.getItem(LOGIN_ATTEMPTS_STORAGE_KEY);
+  if (!rawStore) return {};
+
+  try {
+    return JSON.parse(rawStore) as LoginAttemptsStore;
+  } catch {
+    return {};
+  }
+}
+
+function writeAttemptsStore(store: LoginAttemptsStore) {
+  localStorage.setItem(LOGIN_ATTEMPTS_STORAGE_KEY, JSON.stringify(store));
+}
+
+function getAttemptEntry(email: string): LoginAttemptEntry {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return { attempts: 0, blockedUntil: null };
+
+  const store = readAttemptsStore();
+  return store[normalizedEmail] ?? { attempts: 0, blockedUntil: null };
+}
+
+function setAttemptEntry(email: string, entry: LoginAttemptEntry) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return;
+
+  const store = readAttemptsStore();
+  store[normalizedEmail] = entry;
+  writeAttemptsStore(store);
+}
+
+function clearAttemptEntry(email: string) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return;
+
+  const store = readAttemptsStore();
+  delete store[normalizedEmail];
+  writeAttemptsStore(store);
+}
+
+function isEmailNotFoundMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    (normalized.includes('email') && normalized.includes('nao encontrado')) ||
+    (normalized.includes('email') && normalized.includes('não encontrado')) ||
+    (normalized.includes('email') && normalized.includes('nao existe')) ||
+    (normalized.includes('email') && normalized.includes('não existe')) ||
+    (normalized.includes('usuario') && normalized.includes('nao encontrado')) ||
+    (normalized.includes('usuário') && normalized.includes('não encontrado'))
+  );
+}
+
+function isWrongPasswordMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    (normalized.includes('senha') && normalized.includes('incorreta')) ||
+    (normalized.includes('senha') && normalized.includes('invalida')) ||
+    (normalized.includes('senha') && normalized.includes('inválida'))
+  );
+}
+
 export default function SignIn() {
   const {
     register,
     control,
     handleSubmit,
+    watch,
     clearErrors,
     setError,
     formState: { errors },
@@ -33,6 +111,7 @@ export default function SignIn() {
 
   const error = Object.values(errors)[0]?.message ?? errors.root?.message;
   const [showPassword, setShowPassword] = useState(false);
+  const emailValue = watch('email');
 
   const [isLoading, setIsLoading] = useState(false);
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
@@ -40,10 +119,37 @@ export default function SignIn() {
   const isBlocked = blockedUntil !== null && blockedUntil > Date.now();
 
   useEffect(() => {
+    const normalizedEmail = normalizeEmail(emailValue ?? '');
+    if (!normalizedEmail) {
+      setBlockedUntil(null);
+      setRemainingTime(0);
+      return;
+    }
+
+    const entry = getAttemptEntry(normalizedEmail);
+    if (entry.blockedUntil && entry.blockedUntil > Date.now()) {
+      setBlockedUntil(entry.blockedUntil);
+      setRemainingTime(Math.floor((entry.blockedUntil - Date.now()) / 1000));
+      return;
+    }
+
+    if (entry.blockedUntil && entry.blockedUntil <= Date.now()) {
+      clearAttemptEntry(normalizedEmail);
+    }
+
+    setBlockedUntil(null);
+    setRemainingTime(0);
+  }, [emailValue]);
+
+  useEffect(() => {
     if (!blockedUntil) return;
     const interval = setInterval(() => {
       const diff = Math.floor((blockedUntil - Date.now()) / 1000);
       if (diff <= 0) {
+        const normalizedEmail = normalizeEmail(emailValue ?? '');
+        if (normalizedEmail) {
+          clearAttemptEntry(normalizedEmail);
+        }
         setBlockedUntil(null);
         setRemainingTime(0);
         clearInterval(interval);
@@ -52,7 +158,7 @@ export default function SignIn() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [blockedUntil]);
+  }, [blockedUntil, emailValue]);
 
   const formatTime = (seconds: number) => {
     const min = Math.floor(seconds / 60);
@@ -61,10 +167,17 @@ export default function SignIn() {
   };
 
   const onSubmit = async (data: LoginFormData) => {
+    const normalizedEmail = normalizeEmail(data.email);
+    const currentEntry = getAttemptEntry(normalizedEmail);
+
+    if (currentEntry.blockedUntil && currentEntry.blockedUntil > Date.now()) {
+      setBlockedUntil(currentEntry.blockedUntil);
+      return;
+    }
+
     if (isBlocked) return;
     clearErrors();
     setIsLoading(true);
-    console.log(data);
 
     try {
       const { user } = await authService.login({
@@ -72,6 +185,8 @@ export default function SignIn() {
         password: data.password,
         rememberMe: data.rememberMe,
       });
+
+      clearAttemptEntry(normalizedEmail);
       setUser(user);
       navigate('/home');
     } catch (error: unknown) {
@@ -92,10 +207,43 @@ export default function SignIn() {
           message: 'Muitas tentativas. Tente novamente mais tarde.',
         });
         // backend ideal envia retryAfter
-        const retryAfter = err?.response?.data?.retryAfter || 900;
-        setBlockedUntil(Date.now() + retryAfter * 1000);
+        const retryAfter = err?.response?.data?.retryAfter ?? 900;
+        const blockedUntilFromApi = Date.now() + retryAfter * 1000;
+        setAttemptEntry(normalizedEmail, {
+          attempts: MAX_FAILED_LOGIN_ATTEMPTS,
+          blockedUntil: blockedUntilFromApi,
+        });
+        setBlockedUntil(blockedUntilFromApi);
         return;
       }
+
+      if (status === 401) {
+        const newAttempts = currentEntry.attempts + 1;
+        const shouldBlock = newAttempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+        const nextBlockedUntil = shouldBlock ? Date.now() + LOGIN_BLOCK_DURATION_MS : null;
+
+        setAttemptEntry(normalizedEmail, {
+          attempts: newAttempts,
+          blockedUntil: nextBlockedUntil,
+        });
+
+        if (isEmailNotFoundMessage(message)) {
+          setError('email', { message: 'Email não encontrado.' });
+        } else if (isWrongPasswordMessage(message)) {
+          setError('password', { message: 'Senha incorreta.' });
+        } else {
+          setError('root', { message: 'Email ou senha incorretos.' });
+        }
+
+        if (shouldBlock && nextBlockedUntil) {
+          setError('root', {
+            message: 'Muitas tentativas inválidas. Login bloqueado por 15 minutos.',
+          });
+          setBlockedUntil(nextBlockedUntil);
+        }
+        return;
+      }
+
       setError('root', { message });
     } finally {
       setIsLoading(false);
@@ -129,7 +277,7 @@ export default function SignIn() {
             </Alert>
           )}
 
-          <FormField id="email" label="Email pessoal">
+          <FormField id="email" label="Email pessoal" error={errors.email}>
             <Input
               id="email"
               type="email"
@@ -139,7 +287,7 @@ export default function SignIn() {
             />
           </FormField>
 
-          <FormField id="password" label="Senha">
+          <FormField id="password" label="Senha" error={errors.password}>
             <div className="relative">
               <Input
                 id="password"

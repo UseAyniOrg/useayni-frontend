@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 import { signUpSchema, type SignUpData } from '@/schemas/signUp';
-import FormField from '../common/formField';
+import FormField from '../common/FormField';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {

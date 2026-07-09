@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import FormField from '../common/formField';
+import FormField from '../common/FormField';
 import { formatPhone } from '@/utils/phone';
 import {
   forgotPasswordFormSchema,

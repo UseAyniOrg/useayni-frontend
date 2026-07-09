@@ -30,6 +30,22 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const originalRequest = error.config;
 
+      const requestUrl = String(originalRequest?.url ?? '');
+      const isAuthEndpoint =
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/refresh-token') ||
+        requestUrl.includes('/auth/logout');
+
+      // Never try refresh for auth endpoints themselves (ex: failed login).
+      if (isAuthEndpoint) {
+        return Promise.reject(error);
+      }
+
+      // Without an access token there is nothing to refresh.
+      if (!authService.getAccessToken()) {
+        return Promise.reject(error);
+      }
+
       if (!originalRequest._retry) {
         originalRequest._retry = true;
 
@@ -38,7 +54,9 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         } catch (refreshError) {
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           return Promise.reject(refreshError);
         }
       }
