@@ -49,7 +49,11 @@ interface AppSidebarProps {
   isLoading: boolean;
 }
 
-const mockComunidades = ['Comunidade A', 'Comunidade B', 'Comunidade C'];
+const mockComunidades = [
+  { label: 'Reunião de Planejamento Q2', id: 'mock-misc-001' },
+  { label: 'Comunidade B', id: 'mock-misc-002' },
+  { label: 'Comunidade C', id: 'mock-misc-003' },
+];
 
 export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) {
   const [comunidadesOpen, setComunidadesOpen] = useState(false);
@@ -109,9 +113,9 @@ export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) 
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {mockComunidades.map(comunidade => (
-                        <SidebarMenuSubItem key={comunidade}>
-                          <SidebarMenuSubButton>
-                            <span>{comunidade}</span>
+                        <SidebarMenuSubItem key={comunidade.id}>
+                          <SidebarMenuSubButton onClick={() => navigate(`/miscelaneas/${comunidade.id}`)}>
+                            <span>{comunidade.label}</span>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}

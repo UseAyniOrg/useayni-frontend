@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/sidebar';
 import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useReceivedInvites } from '@/hooks/useReceivedInvites';
+import { Badge } from '@/components/ui/badge';
 
 export function NavUser({
   user,
@@ -27,6 +29,7 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
   const { clearAuth } = useAuthContext();
+  const { pendingCount } = useReceivedInvites();
 
   const handleLogout = async () => {
     await authService.logout();
@@ -87,9 +90,14 @@ export function NavUser({
                 <Settings />
                 Configurações
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate('/convites')}>
                 <Bell />
-                Notificações
+                Convites
+                {pendingCount > 0 && (
+                  <Badge variant="destructive" className="ml-auto">
+                    {pendingCount}
+                  </Badge>
+                )}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
