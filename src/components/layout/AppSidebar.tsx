@@ -1,218 +1,142 @@
-import { useState } from 'react';
+import {
+  Building2,
+  ClipboardCheck,
+  GitBranch,
+  Home,
+  LayoutGrid,
+  Globe2,
+  ListChecks,
+  Settings,
+  UserRoundCog,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import {
-  MessageSquare,
-  Users,
-  Target,
-  Calendar,
-  Award,
-  CheckSquare,
-  Settings,
-  ChevronRight,
-  LayoutGrid,
-  ClipboardCheck,
-  UserCog,
-} from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AccountSwitcher } from './AccountSwitcher';
 import { NavUser } from './NavUser';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
-import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-
-interface MemberPosition {
-  type: 'REPRESENTANTE' | 'DIRIGENTE' | 'CAR' | 'CAE';
-  id: string;
-  name: string;
-}
-
-interface RolesAndPermissionsData {
-  memberId: string;
-  memberName: string;
-  roles: string[];
-  positions: MemberPosition[];
-}
+import { useTenant } from '@/contexts/TenantContext';
 
 interface AppSidebarProps {
-  rolesAndPermissions: RolesAndPermissionsData | null;
-  isLoading: boolean;
+  rolesAndPermissions?: unknown;
+  isLoading?: boolean;
 }
 
-const mockComunidades = ['Comunidade A', 'Comunidade B', 'Comunidade C'];
-
-export function AppSidebar({ rolesAndPermissions, isLoading }: AppSidebarProps) {
-  const [comunidadesOpen, setComunidadesOpen] = useState(false);
-  const [tarefasOpen, setTarefasOpen] = useState(false);
-
+export function AppSidebar(_props: AppSidebarProps) {
   const navigate = useNavigate();
   const { user: authUser } = useAuthContext();
-  const isMemberOnly = authUser?.roles.length === 1 && authUser.roles[0] === 'MEMBRO';
-
-  // Fetch current member data
+  const { tenant, isFeatureEnabled } = useTenant();
   const { member } = useCurrentMember();
 
+  const roles = authUser?.roles ?? [];
+  const canManageMembers = Boolean(authUser?.support_session_id) || roles.some((role) =>
+    ['organization.admin', 'members.approve', 'organization.manage'].includes(role),
+  );
+  const canManageOrganization = Boolean(authUser?.support_session_id) ||
+    roles.includes('organization.admin') || roles.includes('organization.manage');
+  const hasModule = (slug: string) =>
+    Boolean(authUser?.support_session_id) || isFeatureEnabled(slug);
+
   const user = {
-    name: member?.name || 'Usuário',
-    email: member?.email_personal || member?.email_university || 'email@example.com',
+    name: member?.name || authUser?.name || 'Usuário',
+    email: member?.email_personal || authUser?.email || '',
     avatar: member?.profile_picture_url || '',
     slug: member?.slug || '',
   };
 
+  const items = [
+    { label: 'Tipos de cadastro', path: '/admin/perfis-externos', icon: UserRoundCog, visible: canManageOrganization },
+    { label: 'Início', path: canManageOrganization ? '/admin' : '/home', icon: Home, visible: true },
+    {
+      label: 'Miscelâneas',
+      path: canManageOrganization ? '/admin/miscelaneas' : '/miscelaneas',
+      icon: LayoutGrid,
+      visible: hasModule('miscellaneous_full'),
+    },
+    {
+      label: 'Aprovações',
+      path: canManageOrganization ? '/admin/aprovacoes' : '/aprovacoes',
+      icon: ClipboardCheck,
+      visible: canManageMembers && hasModule('registration_approval'),
+    },
+    {
+      label: 'Membros',
+      path: canManageOrganization ? '/admin/gestao-membros' : '/gestao-membros',
+      icon: UserRoundCog,
+      visible: canManageMembers,
+    },
+    {
+      label: 'Hierarquia',
+      path: '/admin/hierarquia',
+      icon: GitBranch,
+      visible: hasModule('hierarchy') &&
+        (canManageOrganization || roles.includes('org_units.manage')),
+    },
+    {
+      label: 'Home pública',
+      path: '/admin/organizacao/home',
+      icon: Globe2,
+      visible: canManageOrganization,
+    },
+    {
+      label: 'Campos de cadastro',
+      path: '/admin/cadastro',
+      icon: ListChecks,
+      visible: canManageOrganization && hasModule('custom_fields'),
+    },
+    {
+      label: 'Administração',
+      path: '/admin',
+      icon: Settings,
+      visible: canManageOrganization,
+    },
+  ].filter((item) => item.visible);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center justify-center p-2 group-data-[collapsible=icon]:hidden">
-          <img
-            src="/Ayni.svg"
-            alt="Ayni"
-            className="h-8 w-auto cursor-pointer"
-            onClick={() => navigate('/home')}
-          />
+        <div className="flex items-center gap-3 px-2 py-3">
+          {tenant?.theme.logo_url ? (
+            <img src={tenant.theme.logo_url} alt="" className="h-8 w-8 rounded object-contain" />
+          ) : (
+            <Building2 className="h-8 w-8 shrink-0 rounded bg-primary/10 p-1.5 text-primary" />
+          )}
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-sm font-semibold">{tenant?.name ?? 'UseAyni'}</p>
+            <p className="truncate text-xs text-muted-foreground">Espaço da organização</p>
+          </div>
         </div>
-        <AccountSwitcher rolesAndPermissions={rolesAndPermissions} isLoading={isLoading} />
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Chats">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Chats</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Miscelâneas" onClick={() => navigate('/miscelaneas')}>
-                  <LayoutGrid className="h-4 w-4" />
-                  <span>Miscelâneas</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {!isMemberOnly && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Aprovações" onClick={() => navigate('/aprovacoes')}>
-                    <ClipboardCheck className="h-4 w-4" />
-                    <span>Aprovações</span>
+              {items.map(({ label, path, icon: Icon }) => (
+                <SidebarMenuItem key={path}>
+                  <SidebarMenuButton
+                    tooltip={label}
+                    isActive={window.location.pathname === path ||
+                      (path !== '/home' && path !== '/admin' && window.location.pathname.startsWith(`${path}/`))}
+                    onClick={() => navigate(path)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )}
-
-              {authUser?.roles.includes('EQUIPE_TECNICA') && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Gestão de Membros" onClick={() => navigate('/gestao-membros')}>
-                    <UserCog className="h-4 w-4" />
-                    <span>Gestão de Membros</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-
-              <Collapsible
-                open={comunidadesOpen}
-                onOpenChange={setComunidadesOpen}
-                asChild
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Comunidades" asChild>
-                    <CollapsibleTrigger>
-                      <Users className="h-4 w-4" />
-                      <span>Comunidades</span>
-                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-100 group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
-                    </CollapsibleTrigger>
-                  </SidebarMenuButton>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {mockComunidades.map(comunidade => (
-                        <SidebarMenuSubItem key={comunidade}>
-                          <SidebarMenuSubButton>
-                            <span>{comunidade}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton>
-                          <span>Explorar</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Metas">
-                  <Target className="h-4 w-4" />
-                  <span>Metas</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Agenda">
-                  <Calendar className="h-4 w-4" />
-                  <span>Agenda</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Participações">
-                  <Award className="h-4 w-4" />
-                  <span>Participações</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <Collapsible
-                open={tarefasOpen}
-                onOpenChange={setTarefasOpen}
-                asChild
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Tarefas" asChild>
-                    <CollapsibleTrigger>
-                      <CheckSquare className="h-4 w-4" />
-                      <span>Tarefas</span>
-                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-100 group-data-open/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
-                    </CollapsibleTrigger>
-                  </SidebarMenuButton>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton>
-                          <span>Vinculadas</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton>
-                          <span>Explorar</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Configurações">
-                  <Settings className="h-4 w-4" />
-                  <span>Configurações</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -3,13 +3,12 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { Search } from 'lucide-react';
+import { DataTable } from '@/components/ui/data-table';
 
 const ALL_ROLES = ['MEMBRO', 'LIDER', 'DIRIGENTE', 'CA', 'EQUIPE_TECNICA', 'ESTADUAL', 'CAR', 'EXTERNO'];
 
@@ -44,7 +43,6 @@ export default function MembersManagementPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Member | null>(null);
   const [acting, setActing] = useState(false);
 
@@ -56,11 +54,6 @@ export default function MembersManagementPage() {
   };
 
   useEffect(() => { load(); }, []);
-
-  const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email_personal?.toLowerCase().includes(search.toLowerCase())
-  );
 
   const memberRoles = selected?.roles?.map(r => r.name) ?? [];
 
@@ -101,46 +94,14 @@ export default function MembersManagementPage() {
       <SidebarInset>
         <AppHeader title="Gestão de Membros" />
         <main className="flex-1 overflow-auto p-4 space-y-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por nome ou email…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
           {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
-
-          {!loading && filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum membro encontrado.</p>
-          )}
-
-          <div className="space-y-2">
-            {filtered.map(m => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={m.profile_picture_url} alt={m.name} />
-                    <AvatarFallback className="text-xs">{getInitials(m.name)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.email_personal}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex gap-1 flex-wrap justify-end max-w-xs">
-                    {m.roles?.map(r => (
-                      <span key={r.id} className="rounded-full bg-muted px-2 py-0.5 text-xs">{ROLE_LABELS[r.name] ?? r.name}</span>
-                    ))}
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => setSelected(m)}>Gerenciar roles</Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {!loading && <DataTable rows={members} label="gestão de papéis" search={member => `${member.name} ${member.email_personal ?? ''} ${member.roles?.map(role => ROLE_LABELS[role.name] ?? role.name).join(' ') ?? ''}`}
+            columns={[
+              { key: 'name', header: 'Nome', cell: member => <div className="flex items-center gap-2"><Avatar className="size-8 shrink-0"><AvatarImage src={member.profile_picture_url} alt="" /><AvatarFallback>{getInitials(member.name)}</AvatarFallback></Avatar>{member.name}</div> },
+              { key: 'email', header: 'Email', cell: member => member.email_personal },
+              { key: 'roles', header: 'Papéis', cell: member => member.roles?.map(role => ROLE_LABELS[role.name] ?? role.name).join(', ') },
+              { key: 'actions', header: 'Ações', cell: member => <Button size="sm" variant="outline" onClick={() => setSelected(member)}>Gerenciar roles</Button> },
+            ]} />}
         </main>
       </SidebarInset>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,21 @@ import { validateCPF } from '@/utils/cpf';
 import { formatCPF } from '@/utils/cpf';
 import { formatPhone } from '@/utils/phone';
 import { validateEmail } from '@/utils/email';
+import { useTenant } from '@/contexts/TenantContext';
+import type { RegistrationFieldDefinition } from '@/lib/auth/authTypes';
+import GenericSignUp from './generic-signup';
+import { safeReturnTo } from '@/lib/auth/accessContext';
+import { externalProfileService, type ExternalProfileType } from '@/services/externalProfileService';
+import { RegistrationProfileFields, selectedProfileData } from './RegistrationProfileFields';
+import type { Dispatch, SetStateAction } from 'react';
+
+export interface RegistrationProfileProps {
+  profiles: ExternalProfileType[];
+  profileKey: string;
+  setProfileKey: (key: string) => void;
+  profileData: Record<string, unknown>;
+  setProfileData: Dispatch<SetStateAction<Record<string, unknown>>>;
+}
 
 interface SignUpProps {
   padrinhoSlug?: string | null;
@@ -40,13 +55,87 @@ interface SignUpProps {
 
 const NOT_APPLICABLE = 'not_applicable';
 
-export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
+export default function SignUp(props: SignUpProps) {
+  const { tenant, isLoading: isTenantLoading, error: tenantError } = useTenant();
+  const [registrationFields, setRegistrationFields] = useState<RegistrationFieldDefinition[] | null>(null);
+  const [fieldsError, setFieldsError] = useState('');
+  const [profiles, setProfiles] = useState<ExternalProfileType[]>([]);
+  const [profileKey, setProfileKey] = useState('');
+  const [profileData, setProfileData] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    if (!tenant) {
+      setRegistrationFields(null);
+      return;
+    }
+
+    let isCurrent = true;
+    setRegistrationFields(null);
+    setFieldsError('');
+    Promise.all([authService.getRegistrationFields(), externalProfileService.publicTypes()])
+      .then(([fields, types]) => {
+        if (isCurrent) {
+          setRegistrationFields(fields);
+          setProfiles(types);
+          setProfileKey(types[0]?.key ?? '');
+          setProfileData({});
+        }
+      })
+      .catch(() => {
+        if (isCurrent) setFieldsError('Não foi possível carregar os campos de cadastro da organização.');
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [tenant?.id]);
+
+  if (isTenantLoading || (tenant && registrationFields === null && !fieldsError)) {
+    return <p className="text-center">Carregando formulário de cadastro...</p>;
+  }
+  if (!tenant) {
+    return (
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Cadastre-se na sua organização</CardTitle>
+          <CardDescription>
+            {tenantError ?? 'Acesse o endereço da organização para iniciar o cadastro.'}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+  if (fieldsError || registrationFields === null) {
+    return <p role="alert" className="text-center text-destructive">{fieldsError}</p>;
+  }
+
+  const legacyKeys = new Set(['cpf', 'ra', 'email_university', 'admission_date']);
+  const usesLegacyRegistration = [...legacyKeys].every((key) =>
+    registrationFields.some((field) => field.field_key === key),
+  );
+  const profileProps = { profiles, profileKey, setProfileKey, profileData, setProfileData };
+  return usesLegacyRegistration
+    ? <LegacySignUp {...props} {...profileProps} registrationFields={registrationFields} />
+    : <GenericSignUp {...profileProps} fields={registrationFields} />;
+}
+
+function LegacySignUp({
+  padrinhoSlug,
+  sponsorMemberId,
+  registrationFields,
+  profiles, profileKey, setProfileKey, profileData, setProfileData,
+}: SignUpProps & RegistrationProfileProps & { registrationFields: RegistrationFieldDefinition[] }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const returnTo = safeReturnTo(params.get('returnTo'));
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [registrationCompleted, setRegistrationCompleted] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number | boolean>>({});
+  const additionalFields = registrationFields.filter((field) => ![
+    'cpf', 'ra', 'email_university', 'admission_date',
+  ].includes(field.field_key));
 
   // Step 0 — Dados Acadêmicos
   const [ra, setRa] = useState('');
@@ -416,6 +505,12 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
       }
       if (!confirmarSenha) newErrors.confirmarSenha = 'Confirmação obrigatória';
       else if (senha !== confirmarSenha) newErrors.confirmarSenha = 'Senhas não coincidem';
+      for (const field of additionalFields) {
+        const value = customFieldValues[field.field_key];
+        if (field.required && (value === undefined || value === '' || value === false)) {
+          newErrors[field.field_key] = `${field.label} é obrigatório`;
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -474,6 +569,10 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
           university_not_applicable: universityId === NOT_APPLICABLE,
           course_not_applicable: courseId === NOT_APPLICABLE,
           current_semester_not_applicable: currentSemester === NOT_APPLICABLE,
+          custom_fields: customFieldValues,
+          organization_profile_key: profileKey,
+          profile_data: selectedProfileData(profiles, profileKey, profileData),
+          accepted_profile_sharing: true,
         },
         sponsorIsUuid ? sponsorId : undefined
       );
@@ -504,13 +603,13 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Cadastro em análise</CardTitle>
           <CardDescription>
-            Ótimo ter você conosco, peço apenas mais um pouco de paciência, seu cadastro está em
-            análise, será notificado assim que esse processo for concluído.
+            Seu cadastro está em análise pela organização. Após a aprovação, entre com sua conta
+            {returnTo ? ' e retorne ao evento para concluir a inscrição.' : ' para acessar a plataforma.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/')}>
-            Voltar para o início
+          <Button type="button" variant="outline" className="w-full" onClick={() => navigate(returnTo ?? '/')}>
+            {returnTo ? 'Voltar ao evento' : 'Voltar para o início'}
           </Button>
         </CardContent>
       </Card>
@@ -1070,11 +1169,61 @@ export default function SignUp({ padrinhoSlug, sponsorMemberId }: SignUpProps) {
       case 2:
         return (
           <div className="space-y-4">
+            <RegistrationProfileFields profiles={profiles} selected={profileKey} onSelect={setProfileKey} values={profileData} onChange={setProfileData} />
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" required />Autorizo o compartilhamento destes dados com a organização para meu cadastro e seu armazenamento na minha conta para reaproveitamento mediante confirmação.</label>
             {apiError && (
               <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
                 {apiError}
               </div>
             )}
+            {additionalFields.map((field) => (
+              <div className="space-y-2" key={field.field_key}>
+                <Label htmlFor={`custom-${field.field_key}`}>
+                  {field.label}{field.required ? ' *' : ''}
+                </Label>
+                {field.field_type === 'select' ? (
+                  <select
+                    id={`custom-${field.field_key}`}
+                    className="w-full rounded-md border bg-background px-3 py-2"
+                    value={String(customFieldValues[field.field_key] ?? '')}
+                    onChange={(event) => setCustomFieldValues((values) => ({
+                      ...values,
+                      [field.field_key]: event.target.value,
+                    }))}
+                    required={field.required}
+                  >
+                    <option value="">Selecione</option>
+                    {(field.options ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                ) : field.field_type === 'checkbox' ? (
+                  <Input
+                    id={`custom-${field.field_key}`}
+                    type="checkbox"
+                    checked={customFieldValues[field.field_key] === true}
+                    onChange={(event) => setCustomFieldValues((values) => ({
+                      ...values,
+                      [field.field_key]: event.target.checked,
+                    }))}
+                  />
+                ) : field.field_type === 'file' ? (
+                  <p className="text-sm text-muted-foreground">Envio de arquivos ainda não habilitado.</p>
+                ) : (
+                  <Input
+                    id={`custom-${field.field_key}`}
+                    type={field.field_type === 'number' || field.field_type === 'date' ? field.field_type : 'text'}
+                    value={String(customFieldValues[field.field_key] ?? '')}
+                    onChange={(event) => setCustomFieldValues((values) => ({
+                      ...values,
+                      [field.field_key]: field.field_type === 'number' && event.target.value !== ''
+                        ? Number(event.target.value)
+                        : event.target.value,
+                    }))}
+                    required={field.required}
+                  />
+                )}
+                {errors[field.field_key] && <p className="text-sm text-destructive">{errors[field.field_key]}</p>}
+              </div>
+            ))}
             <div className="space-y-2">
               <Label htmlFor="senha">Senha</Label>
               <div className="relative">

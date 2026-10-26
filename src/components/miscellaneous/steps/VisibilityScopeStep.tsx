@@ -14,12 +14,14 @@ interface Props {
   onParentChange: (item: Miscellaneous | undefined) => void;
   onMaxParticipantsChange: (v: number | undefined) => void;
   estimatedStatus: string;
+  canManageScope: boolean;
 }
 
 export function VisibilityScopeStep({
   participation, scopeRules, parent, maxParticipants,
   onParticipationChange, onScopeRulesChange, onParentChange,
   onMaxParticipantsChange, estimatedStatus,
+  canManageScope,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -57,7 +59,13 @@ export function VisibilityScopeStep({
           Defina regras de visibilidade. Sem regras = toda a plataforma.
           Múltiplas regras são combinadas com <strong>OU</strong>.
         </p>
-        <ScopeRulesBuilder rules={scopeRules} onChange={onScopeRulesChange} />
+        {canManageScope ? (
+          <ScopeRulesBuilder rules={scopeRules} onChange={onScopeRulesChange} canManageScope />
+        ) : (
+          <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+            A visibilidade é limitada à organização. Um administrador pode restringir o acesso a unidades específicas.
+          </p>
+        )}
       </div>
 
       {/* Max participants */}

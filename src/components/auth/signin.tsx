@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,10 +9,13 @@ import { Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
 import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { currentAccessContext, resolveTenantSlug, safeReturnTo } from '@/lib/auth/accessContext';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuthContext();
+  const isAdminLogin = location.pathname === '/admin/login';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +59,44 @@ export default function SignIn() {
         password,
         rememberMe,
       });
+      const isPlatformHost = !resolveTenantSlug();
+      if (isAdminLogin) {
+        const adminRoles = isPlatformHost
+          ? ['EQUIPE_TECNICA']
+          : ['organization.admin', 'organization.manage'];
+        if (!adminRoles.some((role) => user.roles.includes(role))) {
+          await authService.logout();
+          setError('Esta conta não tem permissão para acessar a administração.');
+          return;
+        }
+        setUser(user);
+        if (user.password_change_required) {
+          navigate(`/definir-senha?access=${currentAccessContext()}`, { replace: true });
+          return;
+        }
+        navigate('/admin');
+        return;
+      }
       setUser(user);
+      const returnTo = safeReturnTo(new URLSearchParams(location.search).get('returnTo'));
+      if (isPlatformHost) {
+        const selectionPath = returnTo
+          ? `/selecionar-organizacao?returnTo=${encodeURIComponent(returnTo)}`
+          : '/selecionar-organizacao';
+        navigate(selectionPath, { replace: true });
+        return;
+      }
+      const destination = user.password_change_required
+        ? `/definir-senha${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`
+        : returnTo ?? '/home';
+      if (user.password_change_required) {
+        navigate(destination, { replace: true });
+        return;
+      }
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
       navigate('/home');
     } catch (error: unknown) {
       const err = error as any;
@@ -89,7 +129,9 @@ export default function SignIn() {
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
 
-        <CardDescription>Entre na sua conta para continuar</CardDescription>
+        <CardDescription>{isAdminLogin
+          ? resolveTenantSlug() ? 'Administração da organização: use seu vínculo de administrador.' : 'SuperAdmin: administração da plataforma.'
+          : 'Acesso de membro e comunidade, sem permissões administrativas.'}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -189,15 +231,17 @@ export default function SignIn() {
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
-          Nao tem uma conta?{' '}
-          <button
-            onClick={() => navigate('/cadastro')}
-            className="text-primary hover:underline font-medium"
-          >
-            Cadastre-se
-          </button>
-        </div>
+        {!isAdminLogin && (
+          <div className="mt-4 text-center text-sm">
+            Nao tem uma conta?{' '}
+            <button
+              onClick={() => navigate('/cadastro')}
+              className="text-primary hover:underline font-medium"
+            >
+              Cadastre-se
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

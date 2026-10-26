@@ -3,6 +3,7 @@ import { Calendar, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TypeBadge, StatusBadge, VisibilityBadge } from './StatusBadge';
 import type { Miscellaneous } from '@/services/miscellaneousService';
+import { miscellaneousRoute } from '@/services/miscellaneousService';
 
 interface Props {
   misc: Miscellaneous;
@@ -20,7 +21,7 @@ export function MiscellaneousCard({ misc }: Props) {
   return (
     <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
-      onClick={() => navigate(`/miscelaneas/${misc.id}`)}
+      onClick={() => navigate(miscellaneousRoute(`/${misc.id}`))}
     >
       {misc.cover_url && (
         <div className="h-32 w-full overflow-hidden rounded-t-lg">

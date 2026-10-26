@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut, Settings } from 'lucide-react';
+import { BadgeCheck, Building2, Check, ChevronsUpDown, LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/sidebar';
 import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
+import { currentAccessContext, tenantUrl } from '@/lib/auth/accessContext';
 
 export function NavUser({
   user,
@@ -26,12 +28,36 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
-  const { clearAuth } = useAuthContext();
+  const { clearAuth, user: authUser, setUser } = useAuthContext();
+  const { tenant } = useTenant();
+  const [switchError, setSwitchError] = useState('');
+
+  const switchOrganization = async (tenantSlug: string) => {
+    if (tenantSlug === tenant?.slug) return;
+    setSwitchError('');
+    try {
+      const { user: switchedUser } = await authService.switchOrganization(tenantSlug);
+      setUser(switchedUser);
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.assign(tenantUrl(tenantSlug, currentPath));
+    } catch (error: unknown) {
+      const responseMessage =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: { message?: unknown } } }).response?.data?.message
+          : undefined;
+      setSwitchError(
+        typeof responseMessage === 'string'
+          ? responseMessage
+          : 'Não foi possível alternar para essa organização.',
+      );
+    }
+  };
 
   const handleLogout = async () => {
+    const loginPath = currentAccessContext() === 'member' ? '/login' : '/admin/login';
     await authService.logout();
     clearAuth();
-    navigate('/login');
+    navigate(loginPath);
   };
 
   const initials = user.name
@@ -78,20 +104,39 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => navigate('/membros/' + user.slug)}>
-                <BadgeCheck />
-                Conta
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings />
-                Configurações
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notificações
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+            <div>
+              {authUser?.roles.includes('EXTERNO') && (
+                <DropdownMenuItem onSelect={() => navigate('/minhas-inscricoes')}>
+                  <UserRound />
+                  Meus eventos
+                </DropdownMenuItem>
+              )}
+              {user.slug && (
+                <DropdownMenuItem onSelect={() => navigate(`/membros/${user.slug}`)}>
+                  <BadgeCheck />
+                  Meu perfil
+                </DropdownMenuItem>
+              )}
+            </div>
+            {(authUser?.organization_memberships ?? []).filter((membership) => membership.status === 'approved').length > 1 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Minhas organizações</DropdownMenuLabel>
+                {(authUser?.organization_memberships ?? [])
+                  .filter((membership) => membership.status === 'approved')
+                  .map((membership) => (
+                    <DropdownMenuItem
+                      key={membership.organization_id}
+                      onSelect={() => void switchOrganization(membership.tenant_slug)}
+                    >
+                      <Building2 />
+                      <span className="truncate">{membership.organization_name}</span>
+                      {membership.tenant_slug === tenant?.slug && <Check className="ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                {switchError && <p role="alert" className="px-2 py-1 text-xs text-destructive">{switchError}</p>}
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleLogout}>
               <LogOut />

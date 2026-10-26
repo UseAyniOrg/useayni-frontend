@@ -12,11 +12,15 @@ import { ChildrenTab } from '@/components/miscellaneous/detail-tabs/ChildrenTab'
 import { RequestsTab } from '@/components/miscellaneous/detail-tabs/RequestsTab';
 import { InvitesWaitlistTab } from '@/components/miscellaneous/detail-tabs/InvitesWaitlistTab';
 import { AttendanceTab } from '@/components/miscellaneous/detail-tabs/AttendanceTab';
-import { miscellaneousService } from '@/services/miscellaneousService';
+import { miscellaneousRoute, miscellaneousService } from '@/services/miscellaneousService';
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { useCurrentMember } from '@/hooks/useCurrentMember';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { ExternalRegistrationsTab } from '@/components/miscellaneous/detail-tabs/ExternalRegistrationsTab';
 import { Pencil, Archive, Trash2, ChevronRight } from 'lucide-react';
 import type { Miscellaneous } from '@/services/miscellaneousService';
+import { withTenantQuery } from '@/lib/auth/accessContext';
+import { EventRegistrationAnswers } from '@/components/miscellaneous/EventRegistrationAnswers';
 
 const ATTENDANCE_TYPES = ['event', 'meeting', 'activity'];
 
@@ -25,9 +29,14 @@ export default function MiscellaneousDetailPage() {
   const navigate = useNavigate();
   const { data: rolesAndPermissions, isLoading: rolesLoading } = useRolesAndPermissions();
   const { member } = useCurrentMember();
+  const { user } = useAuthContext();
+  const managesOrganization = Boolean(user?.support_session_id) || Boolean(
+    user?.roles.some((role) => ['organization.admin', 'organization.manage'].includes(role)),
+  );
 
   const [misc, setMisc] = useState<Miscellaneous | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -42,18 +51,21 @@ export default function MiscellaneousDetailPage() {
     if (!id) return;
     miscellaneousService.getById(id)
       .then(setMisc)
+      .catch(() => setError('Não foi possível carregar esta miscelânea. Verifique seu acesso e tente novamente.'))
       .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {
+    setIsOwner(managesOrganization);
     if (!id || !member?.id) return;
     miscellaneousService.getPeople(id).then((data) => {
-      const owns = data.owners?.some((o: { member: { id: string } }) => o.member.id === member.id);
+      const owns = managesOrganization ||
+        data.owners?.some((o: { member: { id: string } }) => o.member.id === member.id);
       const participates = data.members?.some((m: { member: { id: string } }) => m.member.id === member.id);
       setIsOwner(owns ?? false);
       setIsParticipant(participates ?? false);
-    });
-  }, [id, member?.id]);
+    }).catch(() => setError('Não foi possível consultar os participantes desta miscelânea.'));
+  }, [id, member?.id, managesOrganization]);
 
   const handleJoin = async () => {
     if (!id) return;
@@ -65,6 +77,8 @@ export default function MiscellaneousDetailPage() {
     try {
       await miscellaneousService.joinMiscellaneous(id);
       setIsParticipant(true);
+    } catch {
+      setError('Não foi possível confirmar sua participação. Verifique as condições de inscrição.');
     } finally {
       setActionLoading(false);
     }
@@ -77,6 +91,8 @@ export default function MiscellaneousDetailPage() {
       await miscellaneousService.createRequest(id, { title: requestTitle, message: requestMessage });
       setRequestSent(true);
       setShowRequestModal(false);
+    } catch {
+      setError('Não foi possível enviar a solicitação de participação. Tente novamente.');
     } finally {
       setActionLoading(false);
     }
@@ -85,19 +101,48 @@ export default function MiscellaneousDetailPage() {
   const handleArchive = async () => {
     if (!id) return;
     setActionLoading(true);
-    await miscellaneousService.archive(id);
-    setConfirmArchive(false);
-    setActionLoading(false);
-    navigate('/miscelaneas');
+    try {
+      await miscellaneousService.archive(id);
+      setConfirmArchive(false);
+      navigate(miscellaneousRoute());
+    } catch {
+      setError('Não foi possível arquivar esta miscelânea. Verifique seu acesso e tente novamente.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!id) return;
     setActionLoading(true);
-    await miscellaneousService.remove(id);
-    setConfirmDelete(false);
-    setActionLoading(false);
-    navigate('/miscelaneas');
+    try {
+      await miscellaneousService.remove(id);
+      setConfirmDelete(false);
+      navigate(miscellaneousRoute());
+    } catch {
+      setError('Não foi possível excluir esta miscelânea. Verifique seu acesso e tente novamente.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePublicAccess = async () => {
+    if (!id || !misc) return;
+    setActionLoading(true);
+    setError('');
+    try {
+      if (misc.public_access_enabled) {
+        await miscellaneousService.disablePublicAccess(id);
+        setMisc({ ...misc, public_access_enabled: false });
+      } else {
+        const result = await miscellaneousService.enablePublicAccess(id);
+        setMisc({ ...misc, public_access_enabled: true, public_slug: result.slug });
+      }
+    } catch {
+      setError('Não foi possível alterar a publicação do evento. Verifique seu acesso e tente novamente.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   if (loading) {
@@ -118,7 +163,7 @@ export default function MiscellaneousDetailPage() {
         <AppSidebar rolesAndPermissions={rolesAndPermissions} isLoading={rolesLoading} />
         <SidebarInset>
           <AppHeader title="Não encontrado" />
-          <main className="p-6"><p className="text-muted-foreground text-sm">Miscelânea não encontrada.</p></main>
+          <main className="p-6"><p role="alert" className="text-destructive text-sm">{error || 'Miscelânea não encontrada.'}</p></main>
         </SidebarInset>
       </SidebarProvider>
     );
@@ -130,10 +175,11 @@ export default function MiscellaneousDetailPage() {
       <SidebarInset>
         <AppHeader title={misc.title} />
         <main className="flex-1 overflow-auto p-4 space-y-4">
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {/* Breadcrumb */}
           {misc.parent_id && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <button className="hover:text-foreground" onClick={() => navigate(`/miscelaneas/${misc.parent_id}`)}>Pai</button>
+              <button className="hover:text-foreground" onClick={() => navigate(miscellaneousRoute(`/${misc.parent_id}`))}>Pai</button>
               <ChevronRight className="h-3 w-3" />
               <span className="text-foreground">{misc.title}</span>
             </div>
@@ -153,11 +199,11 @@ export default function MiscellaneousDetailPage() {
             {isOwner && (
               <div className="flex gap-2">
                 {misc.type === 'form' && (
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/miscelaneas/${id}/formulario`)}>
+                  <Button variant="outline" size="sm" onClick={() => navigate(miscellaneousRoute(`/${id}/formulario`))}>
                     Builder de formulário
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => navigate(`/miscelaneas/${id}/editar`)}>
+                <Button variant="outline" size="sm" onClick={() => navigate(miscellaneousRoute(`/${id}/editar`))}>
                   <Pencil className="h-4 w-4 mr-1" /> Editar
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setConfirmArchive(true)}>
@@ -181,6 +227,28 @@ export default function MiscellaneousDetailPage() {
             )}
           </div>
 
+          {misc.type === 'event' && isOwner && (
+            <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/30 p-5">
+              <div className="space-y-1">
+                <h2 className="font-semibold">Página de divulgação e inscrição</h2>
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  {misc.public_access_enabled
+                    ? 'A página pública está habilitada. Compartilhe o link com membros e comunidade externa.'
+                    : 'Publique uma página visual do evento para receber inscrições de membros e da comunidade externa.'}
+                  {misc.status !== 'active' && ' O evento precisa estar ativo para ficar disponível ao público.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {misc.public_access_enabled && misc.public_slug && misc.status === 'active' && <Button asChild variant="outline">
+                  <a target="_blank" rel="noreferrer" href={withTenantQuery(`/eventos/${misc.public_slug}`)}>Ver página e compartilhar</a>
+                </Button>}
+                <Button disabled={actionLoading || (!misc.public_access_enabled && misc.status !== 'active')} variant={misc.public_access_enabled ? 'outline' : 'default'} onClick={() => void handlePublicAccess()}>
+                  {actionLoading ? 'Atualizando...' : misc.public_access_enabled ? 'Ocultar página pública' : 'Publicar inscrições'}
+                </Button>
+              </div>
+            </section>
+          )}
+          {misc.type === 'event' && isParticipant && <EventRegistrationAnswers eventId={misc.id} />}
           {/* Tabs */}
           <Tabs defaultValue="overview">
             <TabsList className="flex-wrap h-auto">
@@ -189,6 +257,7 @@ export default function MiscellaneousDetailPage() {
               <TabsTrigger value="children">Filhos</TabsTrigger>
               {isOwner && <TabsTrigger value="requests">Solicitações</TabsTrigger>}
               {isOwner && <TabsTrigger value="invites">Convites & Fila</TabsTrigger>}
+              {isOwner && misc.type === 'event' && <TabsTrigger value="external">Inscrições públicas</TabsTrigger>}
               {ATTENDANCE_TYPES.includes(misc.type) && <TabsTrigger value="attendance">Presença</TabsTrigger>}
               {misc.type === 'form' && <TabsTrigger value="form">Formulário</TabsTrigger>}
             </TabsList>
@@ -210,6 +279,11 @@ export default function MiscellaneousDetailPage() {
             {isOwner && (
               <TabsContent value="invites" className="mt-4">
                 <InvitesWaitlistTab miscId={misc.id} isOwner={isOwner} waitlistEnabled={misc.waitlist_enabled} />
+              </TabsContent>
+            )}
+            {isOwner && misc.type === 'event' && (
+              <TabsContent value="external" className="mt-4">
+                <ExternalRegistrationsTab miscId={misc.id} />
               </TabsContent>
             )}
             {ATTENDANCE_TYPES.includes(misc.type) && (

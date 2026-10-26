@@ -7,15 +7,19 @@ import { VisibilityScopeStep } from './steps/VisibilityScopeStep';
 import { PeopleStep } from './steps/PeopleStep';
 import { TypeBadge, StatusBadge } from './StatusBadge';
 import { miscellaneousService } from '@/services/miscellaneousService';
-import type { MiscType, MiscParticipation, ScopeRule, Miscellaneous } from '@/services/miscellaneousService';
+import { miscellaneousRoute } from '@/services/miscellaneousService';
+import type { MiscType, MiscParticipation, ScopeRule, Miscellaneous, ExternalRegistrationField } from '@/services/miscellaneousService';
 import type { MemberSearchResult } from '@/services/memberService';
+import { MediaUploader } from '@/components/media/MediaUploader';
+import { EventRegistrationFieldsEditor } from './EventRegistrationFieldsEditor';
+import { fromDateTimeLocal } from '@/utils/dateTime';
 
 const STEPS = ['Tipo', 'Informações', 'Acesso', 'Pessoas', 'Revisão'];
 
 function estimateStatus(scopeRules: ScopeRule[], roles: string[]): 'active' | 'pending_approval' {
-  const wideScope = scopeRules.some((r) => ['cae', 'car', 'city', 'general'].includes(r.type));
+  const wideScope = scopeRules.some((r) => ['cae', 'car', 'city', 'general', 'org_unit'].includes(r.type));
   if (!wideScope) return 'active';
-  if (roles.some((r) => ['EQUIPE_TECNICA', 'CAE', 'CAR'].includes(r))) return 'active';
+  if (roles.some((r) => ['EQUIPE_TECNICA', 'organization.admin', 'organization.manage', 'CAE', 'CAR'].includes(r))) return 'active';
   return 'pending_approval';
 }
 
@@ -38,11 +42,19 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
   const [coOwners, setCoOwners] = useState<MemberSearchResult[]>([]);
   const [initialMembers, setInitialMembers] = useState<MemberSearchResult[]>([]);
+  const [registrationFields, setRegistrationFields] = useState<ExternalRegistrationField[]>([]);
+  const [coverAssetId, setCoverAssetId] = useState<string>();
+  const [bannerAssetId, setBannerAssetId] = useState<string>();
+  const [mapAssetId, setMapAssetId] = useState<string>();
+  const [sponsorAssets, setSponsorAssets] = useState<Array<{ key: number; assetId?: string }>>([]);
 
   const setField = (name: string, value: string | number | undefined) =>
     setFields((prev) => ({ ...prev, [name]: value }));
 
   const estimated = estimateStatus(scopeRules, userRoles);
+  const canManageScope = userRoles.some((role) =>
+    ['EQUIPE_TECNICA', 'organization.admin', 'organization.manage'].includes(role),
+  );
 
   // Date validation against parent
   const validateDates = (): string | null => {
@@ -73,6 +85,8 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
     try {
       const payload = {
         ...fields,
+        start_date: fromDateTimeLocal(fields.start_date as string) ?? fields.start_date,
+        end_date: fromDateTimeLocal(fields.end_date as string),
         type,
         participation_type: participation,
         scope_rules: scopeRules.length ? scopeRules : undefined,
@@ -80,11 +94,16 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
         parent_id: parent?.id,
         co_owner_ids: coOwners.map((m) => m.id),
         initial_member_ids: initialMembers.map((m) => m.id),
+        external_registration_schema: type === 'event' ? registrationFields : undefined,
+        cover_asset_id: coverAssetId,
+        banner_asset_id: bannerAssetId,
+        map_asset_id: mapAssetId,
+        sponsor_asset_ids: sponsorAssets.flatMap(({ assetId }) => assetId ? [assetId] : []),
       };
       const result = await miscellaneousService.create(payload);
       const id = result.miscellaneous.id;
       // Forms go to the builder, others go to detail
-      navigate(type === 'form' ? `/miscelaneas/${id}/formulario` : `/miscelaneas/${id}`);
+      navigate(type === 'form' ? miscellaneousRoute(`/${id}/formulario`) : miscellaneousRoute(`/${id}`));
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'Erro ao criar miscelânea');
     } finally {
@@ -95,9 +114,9 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
   const dateError = step === 1 ? validateDates() : null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="flex min-h-full w-full flex-col gap-6 px-4 py-5 lg:px-8">
       {/* Progress */}
-      <div className="flex items-center gap-2">
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background py-3">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center gap-2">
             <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium
@@ -113,11 +132,70 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
       </div>
 
       {/* Step content */}
-      <div className="rounded-lg border p-6">
+      <div className="min-w-0 flex-1 py-2">
         {step === 0 && <TypeSelectorStep value={type} onChange={(t) => { setType(t); setStep(1); }} />}
         {step === 1 && type && (
           <>
             <BasicInfoStep type={type} values={fields} onChange={setField} />
+            <section className="mt-6 space-y-3 border-t pt-4">
+              <div>
+                <h3 className="font-semibold">Imagens e arquivos</h3>
+                <p className="text-sm text-muted-foreground">
+                  As imagens são comprimidas no navegador antes do envio seguro ao armazenamento da organização.
+                </p>
+              </div>
+              <MediaUploader
+                category={type === 'event' ? 'event-cover' : type === 'form' ? 'form-cover' : 'miscellaneous-cover'}
+                label={type === 'form' ? 'Capa do formulário' : 'Capa da publicação'}
+                hint={type === 'event' ? 'Evento: Figma 1600 x 1000 px (16:10); pode haver recorte no cabeçalho.' : undefined}
+                assetId={coverAssetId}
+                onChange={setCoverAssetId}
+              />
+              {type === 'event' && (
+                <>
+                  <MediaUploader
+                    category="event-banner"
+                    label="Banner do evento (opcional)"
+                    hint="Figma: 1600 x 700 px (aprox. 2,29:1); mantenha o assunto no centro."
+                    assetId={bannerAssetId}
+                    onChange={setBannerAssetId}
+                  />
+                  <MediaUploader
+                    category="event-map"
+                    label="Mapa do local (opcional)"
+                    hint="Preserve a proporção original; lado maior de até 1600 px."
+                    assetId={mapAssetId}
+                    onChange={setMapAssetId}
+                  />
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Artes dos patrocinadores</h4>
+                    {sponsorAssets.map((sponsor, index) => (
+                      <MediaUploader
+                        key={sponsor.key}
+                        category="sponsor-art"
+                        label={`Arte de patrocinador ${index + 1}`}
+                        hint="Figma: 600 x 250 px (aprox. 2,4:1); prefira fundo transparente."
+                        assetId={sponsor.assetId}
+                        onChange={(assetId) => setSponsorAssets((current) =>
+                          current.map((item) => item.key === sponsor.key ? { ...item, assetId } : item),
+                        )}
+                      />
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSponsorAssets((current) => [...current, { key: Date.now() + current.length }])}
+                    >
+                      Adicionar arte de patrocinador
+                    </Button>
+                  </div>
+                </>
+              )}
+            </section>
+            {type === 'event' && (
+              <EventRegistrationFieldsEditor fields={registrationFields} onChange={setRegistrationFields} />
+            )}
             {dateError && <p className="mt-2 text-sm text-destructive">{dateError}</p>}
           </>
         )}
@@ -133,6 +211,7 @@ export function CreateStepper({ userRoles = ['MEMBRO'], initialType }: Props) {
             onParentChange={setParent}
             onMaxParticipantsChange={setMaxParticipants}
             estimatedStatus={estimated}
+            canManageScope={canManageScope}
           />
         )}
         {step === 3 && type && (

@@ -9,58 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { memberService, type PendingMember } from '@/services/memberService';
+import { DataTable } from '@/components/ui/data-table';
 
-function MemberCard({
-  member,
-  onApprove,
-  onReject,
-  onEdit,
-  acting,
-}: {
-  member: PendingMember;
-  onApprove: () => void;
-  onReject: () => void;
-  onEdit: () => void;
-  acting: boolean;
-}) {
+function academicDetails(member: PendingMember) {
   const activeCourse = member.memberCourses?.find(mc => mc.status === 'active') ?? member.memberCourses?.[0];
   const course = activeCourse?.courseUniversity?.course?.name;
   const university = activeCourse?.courseUniversity?.university?.name;
-
-  return (
-    <div className="rounded-lg border p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        {member.profile_picture_url ? (
-          <img src={member.profile_picture_url} alt={member.name} className="h-10 w-10 rounded-full object-cover shrink-0" />
-        ) : (
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium shrink-0">
-            {member.name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="flex-1 min-w-0 space-y-0.5">
-          <p className="font-medium text-sm">{member.name}</p>
-          <p className="text-xs text-muted-foreground">{member.email_personal}</p>
-          <p className="text-xs text-muted-foreground">RA: {member.ra} · Tel: {member.phone}</p>
-          {(course || university) && (
-            <p className="text-xs text-muted-foreground">
-              {course}{university ? ` — ${university}` : ''}
-              {member.current_semester ? ` · ${member.current_semester}º sem.` : ''}
-            </p>
-          )}
-          {member.city && <p className="text-xs text-muted-foreground">{member.city.name}</p>}
-        </div>
-        <span className="rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs font-medium shrink-0">
-          Pendente
-        </span>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        <Button size="sm" disabled={acting} onClick={onApprove}>Aprovar</Button>
-        <Button size="sm" variant="outline" disabled={acting} onClick={onEdit}>Editar e aprovar</Button>
-        <Button size="sm" variant="outline" className="text-destructive" disabled={acting} onClick={onReject}>Rejeitar</Button>
-      </div>
-    </div>
-  );
+  return [course, university, member.current_semester ? `${member.current_semester}º sem.` : ''].filter(Boolean).join(' · ');
 }
 
 function EditApproveDialog({
@@ -164,16 +119,22 @@ export default function ApprovalsPage() {
             </div>
           )}
 
-          {pending.map(m => (
-            <MemberCard
-              key={m.id}
-              member={m}
-              acting={acting === m.id}
-              onApprove={() => handleApprove(m.id)}
-              onReject={() => handleReject(m.id)}
-              onEdit={() => setEditTarget(m)}
-            />
-          ))}
+          {!loading && <DataTable rows={pending} label="aprovações de cadastro"
+            search={member => `${member.name} ${member.email_personal} ${member.ra ?? ''} ${member.phone ?? ''} ${member.city?.name ?? ''} ${academicDetails(member)}`}
+            columns={[
+              { key: 'name', header: 'Nome', cell: member => <div className="flex items-center gap-2">{member.profile_picture_url && <img src={member.profile_picture_url} alt="" className="size-8 shrink-0 rounded-full object-cover" />}{member.name}</div> },
+              { key: 'email', header: 'Email', cell: member => member.email_personal },
+              { key: 'phone', header: 'Telefone', cell: member => member.phone },
+              { key: 'ra', header: 'RA', cell: member => member.ra },
+              { key: 'academic', header: 'Curso / instituição / semestre', cell: academicDetails },
+              { key: 'city', header: 'Cidade', cell: member => member.city?.name },
+              { key: 'status', header: 'Status', cell: () => 'Pendente' },
+              { key: 'actions', header: 'Ações', cell: member => <div className="flex flex-wrap gap-2">
+                <Button size="sm" disabled={acting === member.id} onClick={() => handleApprove(member.id)}>Aprovar</Button>
+                <Button size="sm" variant="outline" disabled={acting === member.id} onClick={() => setEditTarget(member)}>Editar e aprovar</Button>
+                <Button size="sm" variant="outline" className="text-destructive" disabled={acting === member.id} onClick={() => handleReject(member.id)}>Rejeitar</Button>
+              </div> },
+            ]} />}
         </main>
       </SidebarInset>
 

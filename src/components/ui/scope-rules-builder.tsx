@@ -1,223 +1,101 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { academicService } from '@/services/academicService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { orgUnitService, type OrgUnit } from '@/services/orgUnitService';
 import type { ScopeRule } from '@/services/miscellaneousService';
-
-type RuleType = ScopeRule['type'];
-
-const RULE_TYPES: { value: RuleType; label: string }[] = [
-  { value: 'general', label: '🌐 Toda a plataforma' },
-  { value: 'cae', label: 'CAE (estado)' },
-  { value: 'car', label: 'CAR (cidade/região)' },
-  { value: 'city', label: 'Cidade' },
-  { value: 'university', label: 'Universidade' },
-  { value: 'course', label: 'Curso' },
-  { value: 'semester', label: 'Semestre de um curso' },
-];
-
-interface RuleEditorProps {
-  rule: ScopeRule;
-  onChange: (r: ScopeRule) => void;
-  onRemove: () => void;
-}
-
-function RuleEditor({ rule, onChange, onRemove }: RuleEditorProps) {
-  const [universities, setUniversities] = useState<{ id: string; name: string }[]>([]);
-  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
-  const [caes, setCaes] = useState<{ id: string; name: string }[]>([]);
-  const [cars, setCars] = useState<{ id: string; name: string }[]>([]);
-  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    if (rule.type === 'cae') {
-      academicService.getCaeOptions().then((data) => setCaes(data.map((item) => ({ id: item.id, name: item.name })))).catch(() => setCaes([]));
-    }
-  }, [rule.type]);
-
-  useEffect(() => {
-    if (rule.type === 'car') {
-      academicService.getCarOptions().then((data) => setCars(data.map((item) => ({ id: item.id, name: item.name })))).catch(() => setCars([]));
-    }
-  }, [rule.type]);
-
-  useEffect(() => {
-    if (rule.type === 'city') {
-      academicService.getCities().then((data) => setCities(data.map((item) => ({ id: item.id, name: item.name })))).catch(() => setCities([]));
-    }
-  }, [rule.type]);
-
-  useEffect(() => {
-    if (['university', 'course', 'semester'].includes(rule.type)) {
-      academicService.getUniversities().then((data) => setUniversities(data.map((item) => ({ id: item.id, name: item.name })))).catch(() => setUniversities([]));
-    }
-  }, [rule.type]);
-
-  useEffect(() => {
-    if (['course', 'semester'].includes(rule.type) && rule.university_id) {
-      academicService.getCoursesByUniversity(rule.university_id).then((data) => setCourses(data.map((item) => ({ id: item.id, name: item.name })))).catch(() => setCourses([]));
-    } else if (['course', 'semester'].includes(rule.type) && !rule.university_id) {
-      setCourses([]);
-    }
-  }, [rule.type, rule.university_id]);
-
-  const set = (patch: Partial<ScopeRule>) => onChange({ ...rule, ...patch });
-
-  return (
-    <div className="flex flex-wrap items-start gap-2 rounded-lg border bg-muted/30 p-3">
-      {/* Rule type */}
-      <div className="flex-1 min-w-[160px] space-y-1">
-        <Label className="text-xs">Tipo de regra</Label>
-        <select
-          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-          value={rule.type}
-          onChange={(e) => {
-            const nextType = e.target.value as RuleType;
-            onChange({
-              type: nextType,
-              cae_id: nextType === 'cae' ? rule.cae_id : undefined,
-              car_id: nextType === 'car' ? rule.car_id : undefined,
-              city_id: nextType === 'city' ? rule.city_id : undefined,
-              university_id: ['university', 'course', 'semester'].includes(nextType) ? rule.university_id : undefined,
-              course_id: ['course', 'semester'].includes(nextType) ? rule.course_id : undefined,
-              semester: nextType === 'semester' ? rule.semester : undefined,
-            });
-          }}
-        >
-          {RULE_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      {/* CAE */}
-      {rule.type === 'cae' && (
-        <div className="flex-1 min-w-[180px] space-y-1">
-          <Label className="text-xs">CAE</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.cae_id ?? ''}
-            onChange={(e) => set({ cae_id: e.target.value || undefined })}
-          >
-            <option value="">Selecione um CAE</option>
-            {caes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* CAR */}
-      {rule.type === 'car' && (
-        <div className="flex-1 min-w-[180px] space-y-1">
-          <Label className="text-xs">CAR</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.car_id ?? ''}
-            onChange={(e) => set({ car_id: e.target.value || undefined })}
-          >
-            <option value="">Selecione um CAR</option>
-            {cars.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* City */}
-      {rule.type === 'city' && (
-        <div className="flex-1 min-w-[180px] space-y-1">
-          <Label className="text-xs">Cidade</Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.city_id ?? ''}
-            onChange={(e) => set({ city_id: e.target.value || undefined })}
-          >
-            <option value="">Selecione uma cidade</option>
-            {cities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* University (for university/course/semester) */}
-      {['university', 'course', 'semester'].includes(rule.type) && (
-        <div className="flex-1 min-w-[160px] space-y-1">
-          <Label className="text-xs">Universidade <span className="text-muted-foreground">(opcional)</span></Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.university_id ?? ''}
-            onChange={(e) => set({ university_id: e.target.value || undefined, course_id: undefined, semester: undefined })}
-          >
-            <option value="">Qualquer universidade</option>
-            {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* Course (for course/semester) */}
-      {['course', 'semester'].includes(rule.type) && (
-        <div className="flex-1 min-w-[160px] space-y-1">
-          <Label className="text-xs">Curso <span className="text-muted-foreground">(opcional)</span></Label>
-          <select
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.course_id ?? ''}
-            onChange={(e) => set({ course_id: e.target.value || undefined, semester: undefined })}
-          >
-            <option value="">Qualquer curso</option>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* Semester */}
-      {rule.type === 'semester' && (
-        <div className="w-24 space-y-1">
-          <Label className="text-xs">Semestre</Label>
-          <input
-            type="number"
-            min={1}
-            max={12}
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            value={rule.semester ?? ''}
-            onChange={(e) => set({ semester: Number(e.target.value) || undefined })}
-          />
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={onRemove}
-        className="mt-5 text-muted-foreground hover:text-destructive"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
 
 interface Props {
   rules: ScopeRule[];
   onChange: (rules: ScopeRule[]) => void;
+  canManageScope: boolean;
 }
 
-export function ScopeRulesBuilder({ rules, onChange }: Props) {
-  const add = () => onChange([...rules, { type: 'general' }]);
-  const remove = (i: number) => onChange(rules.filter((_, idx) => idx !== i));
-  const update = (i: number, r: ScopeRule) => onChange(rules.map((x, idx) => idx === i ? r : x));
+export function ScopeRulesBuilder({ rules, onChange, canManageScope }: Props) {
+  const [units, setUnits] = useState<OrgUnit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (!canManageScope) return;
+    let active = true;
+    setLoading(true);
+    orgUnitService.listAll()
+      .then((items) => { if (active) setUnits(items); })
+      .catch(() => { if (active) setLoadError('Não foi possível carregar as unidades da organização.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [canManageScope]);
+
+  const update = (index: number, rule: ScopeRule) =>
+    onChange(rules.map((item, itemIndex) => itemIndex === index ? rule : item));
+  const remove = (index: number) => onChange(rules.filter((_, itemIndex) => itemIndex !== index));
 
   return (
     <div className="space-y-3">
       {rules.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          Sem regras = visível para todos os membros da plataforma.
-        </p>
+        <p className="text-sm text-muted-foreground">Sem restrição adicional: visível para os membros da organização.</p>
       )}
-      {rules.map((rule, i) => (
-        <RuleEditor key={i} rule={rule} onChange={(r) => update(i, r)} onRemove={() => remove(i)} />
+      {rules.map((rule, index) => (
+        <div key={`${rule.type}-${index}`} className="grid gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(12rem,1fr)_auto] sm:items-end">
+          <div className="space-y-1">
+            <Label htmlFor={`scope-type-${index}`}>Público</Label>
+            <Select
+              value={rule.type === 'org_unit' ? 'org_unit' : 'general'}
+              onValueChange={(value) => update(index, value === 'org_unit'
+                ? { type: 'org_unit' }
+                : { type: 'general' })}
+            >
+              <SelectTrigger id={`scope-type-${index}`}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">Toda a organização</SelectItem>
+                <SelectItem value="org_unit">Unidade específica</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {rule.type === 'org_unit' ? (
+            <div className="space-y-1">
+              <Label htmlFor={`scope-unit-${index}`}>Unidade</Label>
+              <Select
+                value={rule.org_unit_id ?? '__none__'}
+                onValueChange={(value) => update(index, { ...rule, org_unit_id: value === '__none__' ? undefined : value })}
+                disabled={loading || units.length === 0}
+              >
+                <SelectTrigger id={`scope-unit-${index}`}><SelectValue placeholder={loading ? 'Carregando unidades...' : 'Selecione uma unidade'} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" disabled>Selecione uma unidade</SelectItem>
+                  {units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name}{unit.type?.name ? ` · ${unit.type.name}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="pb-2 text-sm text-muted-foreground">Inclui todos os membros ativos da organização.</p>
+          )}
+          <Button type="button" variant="ghost" size="icon" aria-label="Remover regra" onClick={() => remove(index)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       ))}
-      {rules.length > 0 && rules.length > 1 && (
-        <p className="text-xs text-muted-foreground">
-          As regras são combinadas com <strong>OU</strong> — quem satisfizer qualquer uma delas pode ver.
-        </p>
-      )}
-      <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1">
-        <Plus className="h-4 w-4" /> Adicionar regra de escopo
+      {loadError && <p role="alert" className="text-sm text-destructive">{loadError}</p>}
+      {rules.length > 1 && <p className="text-xs text-muted-foreground">As regras são combinadas com OU.</p>}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-1"
+        onClick={() => onChange([...rules, { type: 'org_unit' }])}
+        disabled={!canManageScope || loading || units.length === 0}
+      >
+        <Plus className="h-4 w-4" /> Adicionar unidade
       </Button>
+      {canManageScope && !loading && units.length === 0 && (
+        <p className="text-xs text-muted-foreground">Cadastre tipos e unidades em Hierarquia para usar escopos específicos.</p>
+      )}
     </div>
   );
 }

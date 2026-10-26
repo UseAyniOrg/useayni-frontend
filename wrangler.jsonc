@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "useayni-frontend",
+  "main": "worker/index.ts",
+  "workers_dev": false,
+  "compatibility_date": "2026-10-26",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    { "pattern": "useayni.com/*", "zone_name": "useayni.com" },
+    { "pattern": "*.useayni.com/*", "zone_name": "useayni.com" }
+  ]
+}

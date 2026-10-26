@@ -1,5 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import type { Miscellaneous } from '@/services/miscellaneousService';
+import { withTenantQuery } from '@/lib/auth/accessContext';
 
 interface Props { misc: Miscellaneous; }
 
@@ -71,7 +72,7 @@ export function OverviewTab({ misc }: Props) {
       {/* Public slug */}
       {misc.public_access_enabled && misc.public_slug && (
         <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-xs">
-          🌐 URL pública: <a href={`/p/${misc.public_slug}`} className="text-primary underline">/p/{misc.public_slug}</a>
+          🌐 Inscrição pública: <a href={withTenantQuery(`/eventos/${misc.public_slug}`)} target="_blank" rel="noreferrer" className="text-primary underline">Abrir página de divulgação e inscrição</a>
         </div>
       )}
     </div>

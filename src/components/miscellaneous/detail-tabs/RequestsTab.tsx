@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { miscellaneousService } from '@/services/miscellaneousService';
+import { DataTable } from '@/components/ui/data-table';
 
 interface Request {
   id: string;
@@ -39,26 +40,16 @@ export function RequestsTab({ miscId, isOwner }: Props) {
     expired: 'bg-gray-100 text-gray-600',
   };
 
-  return (
-    <div className="space-y-3">
-      {requests.map((r) => (
-        <div key={r.id} className="rounded-lg border p-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-medium">{r.title}</p>
-              <p className="text-xs text-muted-foreground">{r.member.name} · {new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
-            </div>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[r.status] ?? ''}`}>{r.status}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">{r.message}</p>
-          {r.status === 'pending' && (
-            <div className="flex gap-2">
-              <Button size="sm" className="h-7" onClick={() => handle(r.id, 'approved')}>Aprovar</Button>
-              <Button size="sm" variant="outline" className="h-7 text-destructive" onClick={() => handle(r.id, 'rejected')}>Negar</Button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+  return <DataTable rows={requests} label="solicitações" search={request => `${request.member.name} ${request.title} ${request.message} ${request.status}`}
+    columns={[
+      { key: 'member', header: 'Pessoa', cell: request => request.member.name },
+      { key: 'title', header: 'Título', cell: request => request.title },
+      { key: 'message', header: 'Mensagem', cell: request => request.message },
+      { key: 'date', header: 'Data', cell: request => new Date(request.created_at).toLocaleDateString('pt-BR') },
+      { key: 'status', header: 'Status', cell: request => <span className={`rounded px-2 py-1 text-xs ${statusColor[request.status] ?? ''}`}>{request.status}</span> },
+      { key: 'actions', header: 'Ações', cell: request => request.status === 'pending' && <div className="flex gap-2">
+        <Button size="sm" onClick={() => handle(request.id, 'approved')}>Aprovar</Button>
+        <Button size="sm" variant="outline" className="text-destructive" onClick={() => handle(request.id, 'rejected')}>Negar</Button>
+      </div> },
+    ]} />;
 }

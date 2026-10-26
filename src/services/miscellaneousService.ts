@@ -5,8 +5,16 @@ export type MiscStatus = 'draft' | 'pending_approval' | 'under_review' | 'active
 export type MiscParticipation = 'public' | 'private';
 export type MiscVisibility = 'public' | 'private';
 
+export function miscellaneousRoute(path = ''): string {
+  const base = window.location.pathname.startsWith('/admin/miscelaneas')
+    ? '/admin/miscelaneas'
+    : '/miscelaneas';
+  return `${base}${path}`;
+}
+
 export interface ScopeRule {
-  type: 'general' | 'cae' | 'car' | 'city' | 'university' | 'course' | 'semester';
+  type: 'general' | 'org_unit' | 'cae' | 'car' | 'city' | 'university' | 'course' | 'semester';
+  org_unit_id?: string;
   cae_id?: string;
   car_id?: string;
   city_id?: string;
@@ -15,6 +23,14 @@ export interface ScopeRule {
   semester?: number;
   // display labels (frontend only, not sent to backend)
   _label?: string;
+}
+
+export interface ExternalRegistrationField {
+  key: string;
+  label: string;
+  type: 'text' | 'email' | 'number' | 'date' | 'select' | 'checkbox';
+  required?: boolean;
+  options?: string[];
 }
 
 export interface Miscellaneous {
@@ -30,6 +46,10 @@ export interface Miscellaneous {
   end_date?: string;
   cover_url?: string;
   banner_url?: string;
+  cover_asset_id?: string;
+  banner_asset_id?: string;
+  map_asset_id?: string;
+  sponsor_asset_ids?: string[];
   public_slug?: string;
   public_access_enabled: boolean;
   parent_id?: string;
@@ -50,6 +70,18 @@ export interface Miscellaneous {
   registration_end_date?: string;
   max_members?: number;
   waitlist_enabled: boolean;
+  external_registration_schema?: ExternalRegistrationField[];
+}
+
+export interface ExternalEventRegistration {
+  id: string;
+  membership_type: 'internal' | 'external';
+  profile_type: 'basic' | 'academic';
+  shared_profile: Record<string, unknown>;
+  registration_data: Record<string, unknown>;
+  profile_consent_at: string;
+  profile_consent_version: string;
+  created_at: string;
 }
 
 export interface MiscFilters {
@@ -100,6 +132,11 @@ export const miscellaneousService = {
   async getPeople(id: string) {
     const res = await api.get(`/miscellaneous/${id}/people`);
     return res.data;
+  },
+
+  async getExternalRegistrations(id: string): Promise<ExternalEventRegistration[]> {
+    const res = await api.get(`/miscellaneous/${id}/external-registrations`);
+    return res.data ?? [];
   },
 
   async addOwner(id: string, memberId: string) {
@@ -232,6 +269,10 @@ export const miscellaneousService = {
   async listAttendanceSessions(miscId: string) {
     const res = await api.get(`/miscellaneous/${miscId}/attendance-sessions`);
     return res.data;
+  },
+
+  async deleteAttendanceSession(sessionId: string) {
+    await api.delete(`/attendance-sessions/${sessionId}`);
   },
 
   async getAttendanceToken(sessionId: string) {

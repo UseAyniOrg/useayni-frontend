@@ -2,9 +2,11 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
+import { Navigate } from 'react-router-dom';
 
 export default function Home() {
   const { data: rolesAndPermissions, isLoading } = useRolesAndPermissions();
+  if (rolesAndPermissions.roles.includes('EXTERNO')) return <Navigate to="/minhas-inscricoes" replace />;
 
   return (
     <SidebarProvider>

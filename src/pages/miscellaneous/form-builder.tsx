@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formService, type FormQuestionPayload } from '@/services/formService';
+import { miscellaneousRoute } from '@/services/miscellaneousService';
 import { useRolesAndPermissions } from '@/hooks/useRolesAndPermissions';
 import { Plus, GripVertical, Trash2 } from 'lucide-react';
 import type { ChangeEvent } from 'react';
@@ -201,7 +202,7 @@ export default function MiscellaneousFormBuilderPage() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => navigate(`/miscelaneas/${id}`)}>Voltar à misselânea</Button>
+            <Button variant="outline" onClick={() => navigate(miscellaneousRoute(`/${id}`))}>Voltar à miscelânea</Button>
           </div>
         </main>
       </SidebarInset>
