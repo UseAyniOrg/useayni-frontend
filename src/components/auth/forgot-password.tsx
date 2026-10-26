@@ -33,7 +33,11 @@ export function ForgotPassword() {
         <CardDescription>Informe o email da sua conta UseAyni.</CardDescription>
       </CardHeader>
       <CardContent>
-        {sent ? <p role="status" className="text-sm leading-6">Se o endereço estiver cadastrado, você receberá um link válido por 30 minutos. Verifique também a pasta de spam.</p> : (
+        {sent ? (
+          <p role="status" className="text-sm leading-6">
+            Se o endereço estiver cadastrado, você receberá um link válido por 30 minutos. Verifique também a pasta de spam.
+          </p>
+        ) : (
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="recovery-email">Email</Label>
@@ -41,7 +45,8 @@ export function ForgotPassword() {
             </div>
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />} Enviar link de recuperação
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
+              Enviar link de recuperação
             </Button>
           </form>
         )}

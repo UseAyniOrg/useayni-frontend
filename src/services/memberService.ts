@@ -29,16 +29,41 @@ export interface PendingMember {
   }>;
 }
 
+export interface Member {
+  id: string;
+  name: string;
+  slug?: string;
+  email_personal: string;
+  email_university?: string;
+  phone?: string;
+  ra?: string;
+  profile_picture_url?: string;
+  registration_status: 'approved' | 'pending' | 'rejected';
+  city?: { id: string; name: string };
+  memberCourses?: Array<{
+    status: string;
+    courseUniversity?: {
+      course?: { id: string; name: string };
+      university?: { id: string; name: string };
+    };
+  }>;
+}
+
 export const memberService = {
   async search(query: string): Promise<MemberSearchResult[]> {
     if (!query.trim()) return [];
-    const res = await api.get('/members/search', { params: { q: query, limit: 10 } });
-    return res.data?.data ?? res.data ?? [];
+    const response = await api.get('/members/search', { params: { q: query, limit: 10 } });
+    return response.data?.data ?? response.data ?? [];
+  },
+
+  async getAll(): Promise<Member[]> {
+    const response = await api.get<Member[]>('/members');
+    return response.data;
   },
 
   async getPendingMembers(): Promise<PendingMember[]> {
-    const res = await api.get('/members/pending');
-    return res.data ?? [];
+    const response = await api.get('/members/pending');
+    return response.data ?? [];
   },
 
   async approve(id: string): Promise<void> {

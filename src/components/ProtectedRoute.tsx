@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { currentAccessContext, resolveTenantSlug } from '@/lib/auth/accessContext';
 
@@ -8,12 +9,21 @@ interface ProtectedRouteProps {
   requiredFeature?: string;
   requiredRoles?: string[];
   requireTenant?: boolean;
+  skipPendingCheck?: boolean;
+  requiresApprovalAccess?: boolean;
 }
-
-export function ProtectedRoute({ children, requiredFeature, requiredRoles, requireTenant }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  requiredFeature,
+  requiredRoles,
+  requireTenant,
+  skipPendingCheck = false,
+  requiresApprovalAccess = false,
+}: ProtectedRouteProps) {
   const location = useLocation();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { tenant, isLoading: isTenantLoading, isFeatureEnabled } = useTenant();
+  const { user, isTechTeam, hasPosition } = useAuthContext();
 
   if (isLoading || isTenantLoading) {
     return <div>Carregando...</div>;
@@ -65,6 +75,21 @@ export function ProtectedRoute({ children, requiredFeature, requiredRoles, requi
     !user?.support_session_id &&
     !isFeatureEnabled(requiredFeature)
   ) {
+    return <Navigate to="/home" replace />;
+  }
+
+  const isLeadership =
+    isTechTeam ||
+    hasPosition('CAE') ||
+    hasPosition('CAR') ||
+    hasPosition('DIRIGENTE') ||
+    hasPosition('REPRESENTANTE');
+
+  if (!skipPendingCheck && user && !user.isActive && !isLeadership) {
+    return <Navigate to="/cadastro-pendente" replace />;
+  }
+
+  if (requiresApprovalAccess && !isLeadership) {
     return <Navigate to="/home" replace />;
   }
 

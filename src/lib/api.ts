@@ -2,8 +2,12 @@ import axios from 'axios';
 import { authService } from './auth/authService';
 import { applyTenantHeader, withTenantQuery } from './auth/accessContext';
 
+const backendUrl =
+  import.meta.env.VITE_BACKEND_URL ||
+  (import.meta.env.DEV ? '/api' : 'http://localhost:3333');
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3333',
+  baseURL: backendUrl,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

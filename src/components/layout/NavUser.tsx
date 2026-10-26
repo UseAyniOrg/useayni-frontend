@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Building2, Check, ChevronsUpDown, LogOut, UserRound } from 'lucide-react';
+import { BadgeCheck, Bell, Building2, Check, ChevronsUpDown, LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ import { authService } from '@/lib/auth/authService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { currentAccessContext, tenantUrl } from '@/lib/auth/accessContext';
+import { useReceivedInvites } from '@/hooks/useReceivedInvites';
 
 export function NavUser({
   user,
@@ -30,6 +32,7 @@ export function NavUser({
   const navigate = useNavigate();
   const { clearAuth, user: authUser, setUser } = useAuthContext();
   const { tenant } = useTenant();
+  const { pendingCount } = useReceivedInvites();
   const [switchError, setSwitchError] = useState('');
 
   const switchOrganization = async (tenantSlug: string) => {
@@ -60,10 +63,9 @@ export function NavUser({
     navigate(loginPath);
   };
 
-  const initials = user.name
-    .split(' ')
-    .map(n => n[0])
-    .join('');
+  const initials = user.name.split(' ').map(namePart => namePart[0]).join('');
+  const memberships = (authUser?.organization_memberships ?? [])
+    .filter(membership => membership.status.toLowerCase() === 'approved');
 
   return (
     <SidebarMenu>
@@ -74,7 +76,7 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg shrink-0">
+              <Avatar className="h-8 w-8 shrink-0 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
@@ -93,7 +95,7 @@ export function NavUser({
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg shrink-0">
+                <Avatar className="h-8 w-8 shrink-0 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
@@ -104,43 +106,40 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div>
-              {authUser?.roles.includes('EXTERNO') && (
-                <DropdownMenuItem onSelect={() => navigate('/minhas-inscricoes')}>
-                  <UserRound />
-                  Meus eventos
-                </DropdownMenuItem>
-              )}
-              {user.slug && (
-                <DropdownMenuItem onSelect={() => navigate(`/membros/${user.slug}`)}>
-                  <BadgeCheck />
-                  Meu perfil
-                </DropdownMenuItem>
-              )}
-            </div>
-            {(authUser?.organization_memberships ?? []).filter((membership) => membership.status === 'approved').length > 1 && (
+            {authUser?.roles.includes('EXTERNO') && (
+              <DropdownMenuItem onSelect={() => navigate('/minhas-inscricoes')}>
+                <UserRound />Meus eventos
+              </DropdownMenuItem>
+            )}
+            {user.slug && (
+              <DropdownMenuItem onSelect={() => navigate(`/membros/${user.slug}`)}>
+                <BadgeCheck />Meu perfil
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => navigate('/convites')}>
+              <Bell />Convites
+              {pendingCount > 0 && <Badge variant="destructive" className="ml-auto">{pendingCount}</Badge>}
+            </DropdownMenuItem>
+            {memberships.length > 1 && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Minhas organizações</DropdownMenuLabel>
-                {(authUser?.organization_memberships ?? [])
-                  .filter((membership) => membership.status === 'approved')
-                  .map((membership) => (
-                    <DropdownMenuItem
-                      key={membership.organization_id}
-                      onSelect={() => void switchOrganization(membership.tenant_slug)}
-                    >
-                      <Building2 />
-                      <span className="truncate">{membership.organization_name}</span>
-                      {membership.tenant_slug === tenant?.slug && <Check className="ml-auto" />}
-                    </DropdownMenuItem>
-                  ))}
+                {memberships.map(membership => (
+                  <DropdownMenuItem
+                    key={membership.organization_id}
+                    onSelect={() => void switchOrganization(membership.tenant_slug)}
+                  >
+                    <Building2 />
+                    <span className="truncate">{membership.organization_name}</span>
+                    {membership.tenant_slug === tenant?.slug && <Check className="ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
                 {switchError && <p role="alert" className="px-2 py-1 text-xs text-destructive">{switchError}</p>}
               </>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleLogout}>
-              <LogOut />
-              Sair
+            <DropdownMenuItem onSelect={() => void handleLogout()}>
+              <LogOut />Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

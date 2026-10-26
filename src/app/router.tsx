@@ -30,6 +30,10 @@ import NotFoundPage from '@/pages/not-found';
 import LegalDocumentPage from '@/pages/legal-document';
 import TenantSelectionPage from '@/pages/tenant-selection';
 import EmailActionPage from '@/pages/email-action';
+import InviteCenter from "@/pages/invites/invite-center.tsx";
+import PendingApproval from "@/pages/pending-approval/pending-approval.tsx";
+import MemberApproval from "@/pages/member-approval/member-approval.tsx";
+import MemberList from '@/pages/member-list/member-list.tsx';
 
 const isPlatformHost = !resolveTenantSlug();
 const localTenantSlug = ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -140,6 +144,14 @@ export const router = createBrowserRouter([{ element: <SessionBoundary />, child
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/membros",
+    element: (
+      <ProtectedRoute>
+        <MemberList />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/membros/:memberSlugName",
     element: (
@@ -177,6 +189,14 @@ export const router = createBrowserRouter([{ element: <SessionBoundary />, child
     element: (
       <ProtectedRoute requiredFeature="miscellaneous_full">
         <MiscellaneousEditPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/cadastro-pendente",
+    element: (
+      <ProtectedRoute skipPendingCheck>
+        <PendingApproval />
       </ProtectedRoute>
     ),
   },
@@ -317,6 +337,22 @@ export const router = createBrowserRouter([{ element: <SessionBoundary />, child
     element: (
       <ProtectedRoute requiredFeature="hierarchy" requiredRoles={adminRoles}>
         <HierarchyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/convites",
+    element: (
+      <ProtectedRoute>
+        <InviteCenter />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/aprovacao-membros",
+    element: (
+      <ProtectedRoute requiresApprovalAccess>
+        <MemberApproval />
       </ProtectedRoute>
     ),
   },

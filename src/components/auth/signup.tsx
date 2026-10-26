@@ -18,7 +18,7 @@ import {
   findMemberById,
   findMemberBySlug,
   type Member,
-} from './padrinho-selector';
+} from '../common/padrinhoSelector';
 import { validatePassword } from '@/utils/password';
 import { authService } from '@/lib/auth/authService';
 import {
