@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { authService } from './auth/authService';
+import { applyTenantHeader, withTenantQuery } from './auth/accessContext';
 
 const backendUrl =
   import.meta.env.VITE_BACKEND_URL ||
@@ -15,6 +16,7 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   config => {
+    applyTenantHeader(config.headers);
     const token = authService.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -29,16 +31,26 @@ api.interceptors.response.use(
   async error => {
     if (error.response?.status === 401) {
       const originalRequest = error.config;
+      if (originalRequest.url === '/auth/login' || originalRequest.url === '/auth/refresh-token' ||
+          originalRequest.url === '/auth/logout' || !originalRequest.headers?.Authorization) {
+        return Promise.reject(error);
+      }
+      const message = error.response?.data?.error ?? '';
+
+      // Sessão invalidada por troca de role ou logout remoto — força novo login
+      if (message.includes('Sessão encerrada')) {
+        window.location.href = withTenantQuery(window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login');
+        return Promise.reject(error);
+      }
 
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-
         try {
           const newToken = await authService.refreshToken();
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         } catch (refreshError) {
-          window.location.href = '/login';
+          window.location.href = withTenantQuery(window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login');
           return Promise.reject(refreshError);
         }
       }

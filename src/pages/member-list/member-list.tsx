@@ -55,7 +55,7 @@ export default function MemberList() {
   const filtered = members.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.email_personal.toLowerCase().includes(search.toLowerCase()) ||
-    m.ra.toLowerCase().includes(search.toLowerCase())
+    (m.ra ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (

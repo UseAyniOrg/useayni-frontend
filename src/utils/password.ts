@@ -14,7 +14,7 @@ export const validatePassword = (password: string): { isValid: boolean; message:
   if (!/[0-9]/.test(password)) {
     return { isValid: false, message: 'Senha deve conter pelo menos um número' };
   }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+  if (!/[!@#$%^&*(),.?":{}|<>-]/.test(password)) {
     return { isValid: false, message: 'Senha deve conter pelo menos um caractere especial' };
   }
   return { isValid: true, message: '' };

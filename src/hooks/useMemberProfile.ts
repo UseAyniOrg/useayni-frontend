@@ -29,24 +29,12 @@ export interface MemberProfileData {
   current_semester?: number | null;
   email_personal?: string;
   email_university?: string;
-  course?: {
-    id: string;
-    name: string;
-  };
-  city?: {
-    id: string;
-    name: string;
-  };
-  university?: {
-    id: string;
-    name: string;
-  };
-  sponsor?: {
-    id: string;
-    name: string;
-    profile_picture_url?: string;
-  };
+  course?: { id: string; name: string };
+  city?: { id: string; name: string };
+  university?: { id: string; name: string };
+  sponsor?: { id: string; name: string; profile_picture_url?: string };
   roles?: Role[];
+  [key: string]: unknown;
 }
 
 export interface MemberProfileEnrichment {
