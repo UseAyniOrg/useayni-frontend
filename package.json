@@ -10,6 +10,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "deploy:workers": "npm run build && node scripts/deployCloudflare.mjs",
+    "deploy:workers:cloudflare": "node scripts/deployCloudflare.mjs",
     "dev:workers": "wrangler dev"
   },
   "devDependencies": {
